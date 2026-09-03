@@ -1,0 +1,16 @@
+/vendor/
+.env
+.env.local
+composer.lock
+
+/database/*.sqlite
+/storage/uploads/*
+!/storage/uploads/.gitkeep
+
+.phpunit.cache/
+.phpunit.result.cache
+/docs/quality/static-analysis/*.cache
+
+*.log
+.DS_Store
+Thumbs.db
