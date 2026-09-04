@@ -1,0 +1,44 @@
+/* Layout khusus halaman login. */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.auth-card {
+  width: 100%;
+  min-width: 0;
+  max-width: 360px;
+  background-color: var(--color-surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6) var(--space-5);
+}
+
+.auth-card__title {
+  font-size: 1.4rem;
+  text-align: center;
+}
+
+.auth-card__subtitle {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.auth-card__footer {
+  margin-top: var(--space-4);
+  text-align: center;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* 360px: card menempel penuh dengan padding lebih kecil supaya tidak terlalu sempit */
+@media (max-width: 400px) {
+  .auth-card {
+    padding: var(--space-5) var(--space-4);
+  }
+}
