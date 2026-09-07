@@ -3,8 +3,10 @@
 declare(strict_types=1);
 
 use App\Controller\AuthController;
+use App\Controller\DashboardController;
 
 require __DIR__ . '/../app/Controller/AuthController.php';
+require __DIR__ . '/../app/Controller/DashboardController.php';
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
@@ -20,6 +22,7 @@ $method = $_SERVER['REQUEST_METHOD'];
 $routes = [
     'GET' => [
         '/login' => [AuthController::class, 'showLoginForm'],
+        '/dashboard' => [DashboardController::class, 'index'],
     ],
 ];
 

@@ -46,7 +46,7 @@
     credentialError.hidden = isValidCredential;
 
     if (isValidCredential) {
-      globalThis.alert('Login berhasil (sementara - belum terhubung ke backend).');
+      globalThis.location.href = '/dashboard';
     }
   });
 })();

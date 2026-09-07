@@ -29,6 +29,12 @@
 
   --radius: 6px;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.1);
+
+  /* Layer token - skala z-index, dipakai agar overlay (sidebar mobile,
+     nanti dropdown/modal) tidak saling tabrak lewat angka sembarangan. */
+  --layer-sticky: 30;
+  --layer-backdrop: 80;
+  --layer-modal: 90;
 }
 
 html {
@@ -144,4 +150,18 @@ select:focus-visible,
 textarea:focus-visible {
   outline: 3px solid var(--color-focus);
   outline-offset: 2px;
+}
+
+/* Sembunyikan visual tapi tetap terbaca assistive technology - dipakai
+   untuk label tombol ikon-saja seperti toggle sidebar. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
