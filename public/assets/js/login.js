@@ -1,24 +1,18 @@
 'use strict';
 
-// SEMENTARA: kredensial dicek langsung di client dengan nilai dummy.
-// Ini bukan validasi asli - hanya untuk menguji tampilan error sebelum
-// AuthService + database siap (lihat docs/quality/tech-debt.md #1).
-// Setelah backend jalan, pengecekan "salah/benar" harus pindah ke server
-// (AUTH-01); JS di sini hanya boleh tersisa untuk cek field kosong.
+// Validasi di sini hanya untuk "field kosong" (kenyamanan UX, VAL-01).
+// Benar/salah kredensial ditentukan sepenuhnya oleh server (POST /login ->
+// AuthService::authenticate()) - JS ini tidak pernah menilai kredensial.
 (function () {
-  let form = document.querySelector('.auth-page form');
+  const form = document.querySelector('.auth-page form');
   if (!form) {
     return;
   }
 
-  let emailInput = document.getElementById('email');
-  let passwordInput = document.getElementById('password');
-  let emailRequiredHint = document.getElementById('email-required');
-  let passwordRequiredHint = document.getElementById('password-required');
-  let credentialError = document.getElementById('login-error');
-
-  let DUMMY_EMAIL = 'admin';
-  let DUMMY_PASSWORD = 'admin';
+  const emailInput = document.getElementById('email');
+  const passwordInput = document.getElementById('password');
+  const emailRequiredHint = document.getElementById('email-required');
+  const passwordRequiredHint = document.getElementById('password-required');
 
   function markField(input, hintEl, isEmpty) {
     input.dataset.touched = 'true';
@@ -26,27 +20,15 @@
   }
 
   form.addEventListener('submit', function (event) {
-    event.preventDefault();
-
-    let emailEmpty = emailInput.value.trim() === '';
-    let passwordEmpty = passwordInput.value.trim() === '';
+    const emailEmpty = emailInput.value.trim() === '';
+    const passwordEmpty = passwordInput.value.trim() === '';
 
     markField(emailInput, emailRequiredHint, emailEmpty);
     markField(passwordInput, passwordRequiredHint, passwordEmpty);
 
     if (emailEmpty || passwordEmpty) {
-      credentialError.hidden = true;
-      return;
+      event.preventDefault();
     }
-
-    let isValidCredential =
-      emailInput.value.trim() === DUMMY_EMAIL &&
-      passwordInput.value === DUMMY_PASSWORD;
-
-    credentialError.hidden = isValidCredential;
-
-    if (isValidCredential) {
-      globalThis.location.href = '/dashboard';
-    }
+    // Kalau kedua field terisi, form dibiarkan submit asli ke POST /login.
   });
 })();

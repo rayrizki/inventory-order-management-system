@@ -1,7 +1,6 @@
 /vendor/
 .env
 .env.local
-composer.lock
 
 /database/*.sqlite
 /storage/uploads/*

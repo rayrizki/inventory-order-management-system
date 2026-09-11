@@ -37,6 +37,10 @@
   font-weight: 600;
 }
 
+.app-topbar__logout {
+  margin-left: auto;
+}
+
 .app-body {
   flex: 1;
   display: flex;

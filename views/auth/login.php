@@ -1,3 +1,7 @@
+<?php
+/** @var bool $loginFailed */
+$loginFailed ??= false;
+?>
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -13,7 +17,7 @@
             <h1 id="login-title" class="auth-card__title">Masuk</h1>
             <p class="auth-card__subtitle">Inventory &amp; Order Management System</p>
 
-            <p class="form-error" role="alert" id="login-error" hidden>
+            <p class="form-error" role="alert" id="login-error" <?= $loginFailed ? '' : 'hidden' ?>>
                 Email atau password salah.
             </p>
 

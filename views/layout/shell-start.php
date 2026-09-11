@@ -50,6 +50,9 @@ $navItems = [
                 <span aria-hidden="true">&#9776;</span>
             </button>
             <p class="app-topbar__title"><?= htmlspecialchars($pageTitle) ?></p>
+            <form method="post" action="/logout" class="app-topbar__logout">
+                <button type="submit" class="btn-link">Keluar</button>
+            </form>
         </header>
 
         <div class="app-body">

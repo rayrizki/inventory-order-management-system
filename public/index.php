@@ -2,11 +2,17 @@
 
 declare(strict_types=1);
 
+require __DIR__ . '/../vendor/autoload.php';
+require __DIR__ . '/../config/database.php';
+
 use App\Controller\AuthController;
 use App\Controller\DashboardController;
-
-require __DIR__ . '/../app/Controller/AuthController.php';
-require __DIR__ . '/../app/Controller/DashboardController.php';
+use App\Exception\ForbiddenException;
+use App\Exception\UnauthenticatedException;
+use App\Repository\MySqlUserRepository;
+use App\Service\AuthService;
+use App\Session\AuthGuard;
+use App\Session\PhpSessionAdapter;
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
@@ -19,10 +25,24 @@ if ($path !== '/' && is_file(__DIR__ . $path)) {
 
 $method = $_SERVER['REQUEST_METHOD'];
 
+// Wiring manual (constructor injection, tanpa DI container) - ARCH-01.
+$pdo = createPdoConnection();
+$session = new PhpSessionAdapter();
+$userRepository = new MySqlUserRepository($pdo);
+$authService = new AuthService($userRepository);
+$authGuard = new AuthGuard($session);
+
+$authController = new AuthController($authService, $session);
+$dashboardController = new DashboardController($authGuard);
+
 $routes = [
     'GET' => [
-        '/login' => [AuthController::class, 'showLoginForm'],
-        '/dashboard' => [DashboardController::class, 'index'],
+        '/login' => [$authController, 'showLoginForm'],
+        '/dashboard' => [$dashboardController, 'index'],
+    ],
+    'POST' => [
+        '/login' => [$authController, 'login'],
+        '/logout' => [$authController, 'logout'],
     ],
 ];
 
@@ -34,5 +54,14 @@ if ($handler === null) {
     exit;
 }
 
-[$controllerClass, $action] = $handler;
-(new $controllerClass())->$action();
+try {
+    $handler();
+} catch (UnauthenticatedException) {
+    // Akses tanpa login diarahkan ke login (ERR-01).
+    header('Location: /login', true, 303);
+    exit;
+} catch (ForbiddenException) {
+    http_response_code(403);
+    echo '403 Forbidden';
+    exit;
+}
