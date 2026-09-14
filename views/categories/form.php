@@ -23,6 +23,7 @@ require __DIR__ . '/../layout/shell-start.php';
 
             <div class="form-card">
                 <form method="post" action="<?= $isEdit ? '/categories/' . $category->id : '/categories' ?>" novalidate>
+                    <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                     <div class="form-field">
                         <label for="name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
                         <input

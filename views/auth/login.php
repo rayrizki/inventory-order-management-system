@@ -1,5 +1,8 @@
 <?php
-/** @var bool $loginFailed */
+/**
+ * @var bool $loginFailed
+ * @var string $csrfToken
+ */
 $loginFailed ??= false;
 ?>
 <!DOCTYPE html>
@@ -22,6 +25,7 @@ $loginFailed ??= false;
             </p>
 
             <form method="post" action="/login" novalidate>
+                <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                 <div class="form-field">
                     <label for="email">Email</label>
                     <input

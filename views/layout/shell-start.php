@@ -14,7 +14,12 @@ $activeNav = $activeNav ?? '';
 // Controller pemanggil sudah memastikan user login (AuthGuard::requireLogin())
 // sebelum require file ini - dipanggil ulang di sini murni untuk kebutuhan
 // tampilan (nama + role di sidebar), bukan pengecekan otorisasi baru.
-$currentUser = (new \App\Session\AuthGuard(new \App\Session\PhpSessionAdapter()))->requireLogin();
+$shellSession = new \App\Session\PhpSessionAdapter();
+$currentUser = (new \App\Session\AuthGuard($shellSession))->requireLogin();
+
+// Dipakai tiap form POST di halaman ini (lihat Router::dispatch()) - satu
+// token per session, bukan dibuat ulang tiap kali file ini di-require.
+$csrfToken = (new \App\Session\CsrfToken($shellSession))->get();
 
 $roleLabels = [
     'Admin' => 'Admin',
@@ -23,9 +28,6 @@ $roleLabels = [
 ];
 $currentUserRoleLabel = $roleLabels[$currentUser->role->value] ?? $currentUser->role->value;
 
-// Sementara: seluruh menu Admin ditampilkan ke siapa saja, karena belum
-// ada session/role sungguhan (lihat docs/quality/tech-debt.md #1).
-// Nanti daftar ini difilter per role begitu AuthService/session siap.
 $navGroups = [
     'General' => [
         'dashboard' => ['label' => 'Dashboard', 'href' => '/dashboard'],
@@ -48,6 +50,16 @@ $navGroups = [
         'users' => ['label' => 'User', 'href' => '/users'],
     ],
 ];
+
+// Master Data dan Administrasi cuma berisi halaman kelola (CRUD) yang memang
+// admin-only (§1.2: Sales/Warehouse Staff cuma "melihat", bukan mengelola;
+// mengelola user murni Admin) - disembunyikan dari role lain (tech-debt #2).
+// Dashboard/Transaksi/Laporan tetap tampil ke semua role karena granularity
+// per-item-nya (mis. Sales cuma lihat SO miliknya) belum relevan sampai
+// modulnya benar-benar dibangun.
+if ($currentUser->role !== \App\Entity\Role::Admin) {
+    unset($navGroups['Master Data'], $navGroups['Administrasi']);
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -75,6 +87,7 @@ $navGroups = [
             </button>
             <p class="app-topbar__title">IOM System</p>
             <form method="post" action="/logout" class="app-topbar__logout">
+                <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                 <button type="submit" class="btn btn-secondary">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6a2.25 2.25 0 0 0-2.25 2.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15m3 0 3-3m0 0-3-3m3 3H9"/>

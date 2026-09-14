@@ -4,16 +4,27 @@ declare(strict_types=1);
 
 namespace App\Http;
 
+use App\Exception\ForbiddenException;
+use App\Session\CsrfToken;
+
 /**
  * Router manual super sederhana - mendukung path parameter seperti
  * /categories/{id}/edit lewat regex, tanpa dependency apa pun. Dipakai
  * karena banyak resource (Category, Warehouse, Product, ...) butuh
  * halaman detail/edit per-ID.
+ *
+ * Satu titik enforcement CSRF untuk seluruh request POST - dicek di sini
+ * (bukan diulang manual di tiap Controller) supaya tidak ada aksi
+ * mutasi yang lolos tanpa token karena lupa ditambahkan satu per satu.
  */
 final class Router
 {
     /** @var array<string, array<int, array{pattern: string, handler: callable}>> */
     private array $routes = [];
+
+    public function __construct(private readonly CsrfToken $csrf)
+    {
+    }
 
     public function get(string $pattern, callable $handler): void
     {
@@ -27,6 +38,10 @@ final class Router
 
     public function dispatch(string $method, string $path): void
     {
+        if ($method === 'POST' && !$this->csrf->isValid($_POST['_csrf_token'] ?? null)) {
+            throw new ForbiddenException();
+        }
+
         foreach ($this->routes[$method] ?? [] as $route) {
             $params = $this->match($route['pattern'], $path);
 

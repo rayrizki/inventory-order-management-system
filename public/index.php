@@ -17,6 +17,7 @@ use App\Repository\MySqlUserRepository;
 use App\Service\AuthService;
 use App\Service\CategoryService;
 use App\Session\AuthGuard;
+use App\Session\CsrfToken;
 use App\Session\PhpSessionAdapter;
 
 $path = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
@@ -43,7 +44,7 @@ $categoryRepository = new MySqlCategoryRepository($pdo);
 $categoryService = new CategoryService($categoryRepository);
 $categoryController = new CategoryController($categoryService, $authGuard);
 
-$router = new Router();
+$router = new Router(new CsrfToken($session));
 
 $router->get('/login', [$authController, 'showLoginForm']);
 $router->post('/login', [$authController, 'login']);

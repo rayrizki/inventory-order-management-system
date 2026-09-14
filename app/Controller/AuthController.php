@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller;
 
 use App\Service\AuthService;
+use App\Session\CsrfToken;
 use App\Session\SessionInterface;
 
 final class AuthController
@@ -19,6 +20,7 @@ final class AuthController
     {
         $loginFailed = $this->session->get('login_failed') === true;
         $this->session->remove('login_failed');
+        $csrfToken = (new CsrfToken($this->session))->get();
 
         require __DIR__ . '/../../views/auth/login.php';
     }

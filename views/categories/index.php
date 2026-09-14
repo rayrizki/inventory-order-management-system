@@ -9,6 +9,7 @@
  * @var array{type: string, text: string}|null $statusMessage
  * @var string $sortBy
  * @var string $sortDir
+ * @var string $csrfToken Disediakan shell-start.php, dipakai di setiap form POST.
  */
 $pageTitle = 'Kategori';
 $activeNav = 'categories';
@@ -156,6 +157,7 @@ $sortIcon = static function (string $dir): string {
                                         action="/categories/<?= $category->id ?>/delete"
                                         data-confirm="Hapus kategori &quot;<?= htmlspecialchars($category->name, ENT_QUOTES) ?>&quot;? Tindakan ini tidak bisa dibatalkan."
                                     >
+                                        <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                                         <button type="submit" class="btn-link btn-link--danger">Hapus</button>
                                     </form>
                                 </td>
@@ -226,6 +228,7 @@ $sortIcon = static function (string $dir): string {
                 </div>
                 <div class="modal__body">
                     <form method="post" action="/categories" novalidate>
+                        <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <div class="form-field">
                             <label for="create-name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
                             <input
@@ -262,6 +265,7 @@ $sortIcon = static function (string $dir): string {
                 </div>
                 <div class="modal__body">
                     <form method="post" action="/categories" novalidate>
+                        <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <div class="form-field">
                             <label for="edit-name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
                             <input
