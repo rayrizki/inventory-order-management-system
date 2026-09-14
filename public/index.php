@@ -6,11 +6,16 @@ require __DIR__ . '/../vendor/autoload.php';
 require __DIR__ . '/../config/database.php';
 
 use App\Controller\AuthController;
+use App\Controller\CategoryController;
 use App\Controller\DashboardController;
 use App\Exception\ForbiddenException;
+use App\Exception\NotFoundException;
 use App\Exception\UnauthenticatedException;
+use App\Http\Router;
+use App\Repository\MySqlCategoryRepository;
 use App\Repository\MySqlUserRepository;
 use App\Service\AuthService;
+use App\Service\CategoryService;
 use App\Session\AuthGuard;
 use App\Session\PhpSessionAdapter;
 
@@ -23,39 +28,38 @@ if ($path !== '/' && is_file(__DIR__ . $path)) {
     return false;
 }
 
-$method = $_SERVER['REQUEST_METHOD'];
-
 // Wiring manual (constructor injection, tanpa DI container) - ARCH-01.
 $pdo = createPdoConnection();
 $session = new PhpSessionAdapter();
-$userRepository = new MySqlUserRepository($pdo);
-$authService = new AuthService($userRepository);
 $authGuard = new AuthGuard($session);
 
+$userRepository = new MySqlUserRepository($pdo);
+$authService = new AuthService($userRepository);
 $authController = new AuthController($authService, $session);
+
 $dashboardController = new DashboardController($authGuard);
 
-$routes = [
-    'GET' => [
-        '/login' => [$authController, 'showLoginForm'],
-        '/dashboard' => [$dashboardController, 'index'],
-    ],
-    'POST' => [
-        '/login' => [$authController, 'login'],
-        '/logout' => [$authController, 'logout'],
-    ],
-];
+$categoryRepository = new MySqlCategoryRepository($pdo);
+$categoryService = new CategoryService($categoryRepository);
+$categoryController = new CategoryController($categoryService, $authGuard);
 
-$handler = $routes[$method][$path] ?? null;
+$router = new Router();
 
-if ($handler === null) {
-    http_response_code(404);
-    echo '404 Not Found';
-    exit;
-}
+$router->get('/login', [$authController, 'showLoginForm']);
+$router->post('/login', [$authController, 'login']);
+$router->post('/logout', [$authController, 'logout']);
+
+$router->get('/dashboard', [$dashboardController, 'index']);
+
+$router->get('/categories', [$categoryController, 'index']);
+$router->get('/categories/create', [$categoryController, 'showCreateForm']);
+$router->post('/categories', [$categoryController, 'create']);
+$router->get('/categories/{id}/edit', [$categoryController, 'showEditForm']);
+$router->post('/categories/{id}', [$categoryController, 'update']);
+$router->post('/categories/{id}/delete', [$categoryController, 'delete']);
 
 try {
-    $handler();
+    $router->dispatch($_SERVER['REQUEST_METHOD'], $path);
 } catch (UnauthenticatedException) {
     // Akses tanpa login diarahkan ke login (ERR-01).
     header('Location: /login', true, 303);
@@ -63,5 +67,7 @@ try {
 } catch (ForbiddenException) {
     http_response_code(403);
     echo '403 Forbidden';
-    exit;
+} catch (NotFoundException) {
+    http_response_code(404);
+    echo '404 Not Found';
 }

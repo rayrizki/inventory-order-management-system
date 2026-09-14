@@ -186,3 +186,28 @@ INSERT INTO users (name, email, password_hash, role, is_active) VALUES
     ('Sales Dua', 'sales2@iom.test', '$2y$10$fVuPvBwczTZ6KsML63AXNOBZuqn1YtxNZOfo047As/68lhE9aTDuu', 'Sales', 1),
     ('Gudang Satu', 'warehouse1@iom.test', '$2y$10$fVuPvBwczTZ6KsML63AXNOBZuqn1YtxNZOfo047As/68lhE9aTDuu', 'WarehouseStaff', 1),
     ('Gudang Dua', 'warehouse2@iom.test', '$2y$10$fVuPvBwczTZ6KsML63AXNOBZuqn1YtxNZOfo047As/68lhE9aTDuu', 'WarehouseStaff', 1);
+
+-- =========================================================
+-- Seed - master data awal (§7.1: minimal dua gudang)
+-- =========================================================
+
+INSERT INTO categories (name, description) VALUES
+    ('Elektronik', 'Perangkat elektronik dan aksesorisnya'),
+    ('Alat Tulis Kantor', 'Kebutuhan tulis dan administrasi kantor'),
+    ('Makanan & Minuman', 'Produk konsumsi habis pakai'),
+    ('Perlengkapan Rumah Tangga', 'Peralatan dan perlengkapan rumah tangga'),
+    ('Pakaian', 'Pakaian dan aksesoris fashion'),
+    ('Kesehatan & Kecantikan', 'Produk perawatan tubuh, kosmetik, dan kesehatan'),
+    ('Otomotif', 'Suku cadang dan aksesoris kendaraan'),
+    ('Olahraga & Outdoor', 'Perlengkapan olahraga dan kegiatan luar ruangan'),
+    ('Mainan & Hobi', 'Mainan anak dan barang hobi'),
+    ('Perkakas & Konstruksi', 'Alat pertukangan dan bahan bangunan'),
+    ('Furniture', 'Perabot rumah dan kantor'),
+    ('Peralatan Dapur', 'Perlengkapan memasak dan dapur'),
+    ('Bayi & Anak', 'Kebutuhan bayi dan anak-anak'),
+    ('Pertanian & Peternakan', 'Kebutuhan pertanian dan peternakan'),
+    ('Buku & Alat Peraga', 'Buku, media edukasi, dan alat peraga');
+
+INSERT INTO warehouses (name, location, is_active) VALUES
+    ('Gudang Pusat Jakarta', 'Jakarta', 1),
+    ('Gudang Cabang Surabaya', 'Surabaya', 1);

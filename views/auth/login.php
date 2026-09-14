@@ -56,6 +56,6 @@ $loginFailed ??= false;
             </p>
         </section>
     </main>
-    <script src="/assets/js/login.js" defer></script>
+    <script src="/assets/js/form-validation.js" defer></script>
 </body>
 </html>

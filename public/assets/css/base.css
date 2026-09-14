@@ -15,7 +15,14 @@
   --color-primary: #1d4ed8;
   --color-primary-hover: #1e3fb8;
   --color-danger: #b91c1c;
+  --color-danger-hover: #991b1b;
   --color-danger-bg: #fef2f2;
+  --color-success: #15803d;
+  --color-success-bg: #ecfdf3;
+  --color-warning: #b45309;
+  --color-warning-bg: #fffbeb;
+  --color-info: #1d4ed8;
+  --color-info-bg: #eff6ff;
   --color-focus: #2563eb;
 
   --font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
@@ -88,6 +95,14 @@ p {
   border-color: var(--color-danger);
 }
 
+.form-field textarea {
+  resize: vertical;
+}
+
+.required-mark {
+  color: var(--color-danger);
+}
+
 .form-hint {
   font-size: 0.8rem;
   color: var(--color-text-muted);
@@ -97,20 +112,63 @@ p {
   color: var(--color-danger);
 }
 
-.form-error {
+/* Banner status - satu keluarga class per warna (error/success/info/warning).
+   Dipakai untuk pesan hasil aksi (ditampilkan lewat redirect ?status=...,
+   bukan session flash) maupun error form seperti login gagal. */
+
+.form-error,
+.form-success,
+.form-info,
+.form-warning {
   display: flex;
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-3);
   margin-bottom: var(--space-4);
   border-radius: var(--radius);
+  font-size: 0.9rem;
+}
+
+.form-error {
   background-color: var(--color-danger-bg);
   color: var(--color-danger);
-  font-size: 0.9rem;
 }
 
 .form-error[hidden] {
   display: none;
+}
+
+.form-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.form-info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.form-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+/* Tombol tutup pesan sukses/error - dipakai di form-success dan form-error. */
+
+.alert__close {
+  display: inline-flex;
+  margin-left: auto;
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+}
+
+.alert__close:hover {
+  opacity: 0.7;
 }
 
 /* Button dasar */
@@ -125,6 +183,7 @@ p {
   border-radius: var(--radius);
   font: inherit;
   font-weight: 600;
+  text-decoration: none;
   cursor: pointer;
 }
 
@@ -135,6 +194,15 @@ p {
 
 .btn-primary:hover {
   background-color: var(--color-primary-hover);
+}
+
+.btn-danger {
+  background-color: var(--color-danger);
+  color: #ffffff;
+}
+
+.btn-danger:hover {
+  background-color: var(--color-danger-hover);
 }
 
 .btn-block {
@@ -148,12 +216,406 @@ p {
   font: inherit;
   font-weight: 600;
   color: var(--color-primary);
-  text-decoration: underline;
+  text-decoration: none;
   cursor: pointer;
 }
 
 .btn-link:hover {
   color: var(--color-primary-hover);
+  text-decoration: underline;
+}
+
+.btn-link--danger {
+  color: var(--color-danger);
+}
+
+.btn-link--danger:hover {
+  color: var(--color-danger);
+  text-decoration: underline;
+}
+
+.btn-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.btn-secondary:hover {
+  background-color: var(--color-bg);
+}
+
+/* Page header - judul halaman (mis. "Kategori" + jumlah data).
+   Dipakai di semua halaman daftar master data/order. */
+
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  margin-bottom: var(--space-5);
+}
+
+.page-header h1 {
+  margin: 0;
+}
+
+.page-header__meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+/* Back-link di atas judul form create/edit - dipakai ulang di semua
+   halaman form master data (Produk, Gudang, dst). */
+
+.page-header__back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-bottom: var(--space-2);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-decoration: none;
+}
+
+.page-header__back:hover {
+  color: var(--color-text);
+}
+
+/* Data table - overflow-x di wrapper-nya sendiri supaya body halaman
+   tidak pernah scroll ke samping (Bab 3, modul CSS). */
+
+.data-table-wrap {
+  overflow-x: auto;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.data-table th,
+.data-table td {
+  text-align: left;
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--color-border);
+  white-space: nowrap;
+}
+
+.data-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+  background-color: var(--color-bg);
+}
+
+/* Header kolom yang bisa diklik untuk sort (FIND-01). Dipakai ulang di
+   daftar lain (Produk, PO, SO) yang butuh sort. */
+
+.data-table__sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  color: inherit;
+  text-decoration: none;
+}
+
+.data-table__sort:hover {
+  color: var(--color-text);
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.data-table tbody tr:hover {
+  background-color: var(--color-bg);
+}
+
+.data-table td.text-muted {
+  color: var(--color-text-muted);
+}
+
+.data-table td.data-table__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  white-space: nowrap;
+}
+
+.data-table__actions form {
+  margin: 0;
+}
+
+/* Badge - status aktif/nonaktif, low-stock, dsb. Warna semantik terpisah
+   dari --color-primary (bukan warna brand, bukan aksen). */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.badge-success {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badge-warning {
+  background-color: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.badge-muted {
+  background-color: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.form-actions {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* Modal (elemen <dialog> native) - dipakai untuk form create/edit ringan
+   (mis. Kategori) supaya tidak perlu pindah halaman. Halaman penuh tetap
+   ada sebagai fallback progressive enhancement (lihat modal-form.js). */
+
+.modal {
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 0;
+  width: min(28rem, calc(100vw - 2rem));
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.modal::backdrop {
+  background-color: rgb(15 23 42 / .45);
+}
+
+.modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.modal__header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.modal__close {
+  display: inline-flex;
+  border: none;
+  background: transparent;
+  padding: 0;
+  line-height: 1;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.modal__close:hover {
+  color: var(--color-text);
+}
+
+.modal__body {
+  padding: var(--space-5);
+}
+
+.modal__body .form-field:last-of-type {
+  margin-bottom: var(--space-4);
+}
+
+/* Varian modal konfirmasi - lebih sempit dari modal form biasa. */
+
+.modal--confirm {
+  width: min(24rem, calc(100vw - 2rem));
+}
+
+.modal--confirm .modal__body p {
+  margin: 0 0 var(--space-4);
+}
+
+/* Card pembungkus form create/edit - biar form tidak "mengambang"
+   langsung di atas latar halaman (konsisten dengan .auth-card). */
+
+.form-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  max-width: 32rem;
+}
+
+/* List toolbar - baris search/filter di atas data-table. Dipakai ulang di
+   semua halaman daftar (Kategori, dan nanti Produk/PO/SO untuk FIND-01). */
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
+/* Search box - input polos (submit lewat Enter, form cuma punya satu text
+   field jadi browser submit otomatis) + tombol clear (x) di kanan yang
+   tampil hanya saat ada pencarian aktif. Dipakai ulang untuk semua daftar
+   yang butuh search (FIND-01). */
+
+.search-box {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  max-width: 20rem;
+  margin: 0;
+}
+
+.search-box__input {
+  width: 100%;
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  padding-right: 4.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.search-box__input::-webkit-search-cancel-button,
+.search-box__input::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.search-box__clear,
+.search-box__submit {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  color: var(--color-text-muted);
+}
+
+.search-box__clear {
+  right: 2.25rem;
+  text-decoration: none;
+}
+
+.search-box__submit {
+  right: 0;
+  border: none;
+  border-left: 1px solid var(--color-border);
+  background: transparent;
+  cursor: pointer;
+}
+
+.search-box__clear:hover,
+.search-box__submit:hover {
+  color: var(--color-text);
+}
+
+/* Pagination - komponen generik untuk daftar utama (FIND-01: Produk, PO, SO).
+   Belum dipasang di halaman yang datanya kecil (Kategori/Gudang/dst) karena
+   tidak wajib di sana - siap dipakai ulang begitu modul itu dibangun. */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+/* Bar bawah tabel - pilihan baris per halaman di kiri, nomor halaman di
+   kanan. Dipakai ulang di semua daftar (Kategori, dan nanti Produk/PO/SO). */
+
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+}
+
+.per-page-select {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.per-page-select select {
+  font: inherit;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-surface);
+  color: var(--color-text);
+}
+
+.pagination__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2rem;
+  height: 2rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text);
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.pagination__link:hover {
+  background-color: var(--color-bg);
+}
+
+.pagination__link.is-active {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.pagination__link[aria-disabled="true"] {
+  color: var(--color-text-muted);
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Empty state - VIEW-01, ditampilkan saat daftar tidak punya data. */
+
+.empty-state {
+  text-align: center;
+  padding: var(--space-6) var(--space-4);
+  color: var(--color-text-muted);
+}
+
+.empty-state p {
+  margin: 0 0 var(--space-4);
 }
 
 /* Focus state - wajib terlihat jelas (UI-01) */
