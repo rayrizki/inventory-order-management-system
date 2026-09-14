@@ -42,6 +42,7 @@ final class AuthController
         // Session ID diperbarui setelah login berhasil (AUTH-01).
         $this->session->regenerateId();
         $this->session->set('user_id', $user->id);
+        $this->session->set('user_name', $user->name);
         $this->session->set('user_role', $user->role->value);
 
         header('Location: /dashboard', true, 303);

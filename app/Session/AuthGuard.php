@@ -17,13 +17,14 @@ final class AuthGuard
     public function requireLogin(): CurrentUser
     {
         $userId = $this->session->get('user_id');
+        $name = $this->session->get('user_name');
         $role = $this->session->get('user_role');
 
-        if ($userId === null || $role === null) {
+        if ($userId === null || $name === null || $role === null) {
             throw new UnauthenticatedException();
         }
 
-        return new CurrentUser((int) $userId, Role::from((string) $role));
+        return new CurrentUser((int) $userId, (string) $name, Role::from((string) $role));
     }
 
     /**

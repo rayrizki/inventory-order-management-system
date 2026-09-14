@@ -61,12 +61,14 @@ final class AuthGuardTest extends TestCase
     {
         $session = new InMemorySession();
         $session->set('user_id', 7);
+        $session->set('user_name', 'Sinta Sales');
         $session->set('user_role', Role::Sales->value);
 
         $guard = new AuthGuard($session);
         $currentUser = $guard->requireLogin();
 
         self::assertSame(7, $currentUser->id);
+        self::assertSame('Sinta Sales', $currentUser->name);
         self::assertSame(Role::Sales, $currentUser->role);
     }
 
@@ -74,6 +76,7 @@ final class AuthGuardTest extends TestCase
     {
         $session = new InMemorySession();
         $session->set('user_id', 1);
+        $session->set('user_name', 'Admin Utama');
         $session->set('user_role', Role::Admin->value);
 
         $guard = new AuthGuard($session);
@@ -88,6 +91,7 @@ final class AuthGuardTest extends TestCase
     {
         $session = new InMemorySession();
         $session->set('user_id', 2);
+        $session->set('user_name', 'Sinta Sales');
         $session->set('user_role', Role::Sales->value);
 
         $guard = new AuthGuard($session);

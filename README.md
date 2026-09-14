@@ -4,6 +4,8 @@ Aplikasi web inventory & order management, 3 peran (Admin, Sales, Warehouse Staf
 
 **Teknologi**: PHP 8.2+ Native (Controller/Service/Repository, tanpa framework/ORM), Vanilla JS, MySQL 8, Docker Compose, PHPUnit.
 
+**Icon**: [Heroicons](https://heroicons.com/) (MIT License, oleh Tailwind Labs) - dipakai sebagai markup SVG inline yang di-copy langsung ke view PHP (bukan lewat CDN/webfont/JS runtime), supaya aplikasi tetap jalan penuh offline setelah `docker compose up --build`.
+
 ## Status
 
 Slice yang sudah selesai: **Login & Logout (AUTH-01, AUTH-02)**. Slice lain (master data, purchase order, sales order, dashboard/laporan) masih dalam pengerjaan bertahap - lihat `docs/quality/tech-debt.md` untuk keterbatasan yang disadari saat ini.
