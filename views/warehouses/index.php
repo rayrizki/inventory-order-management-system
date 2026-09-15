@@ -1,37 +1,38 @@
 <?php
 /**
- * @var \App\Entity\Category[] $categories
+ * @var \App\Entity\Warehouse[] $warehouses
  * @var string $search
+ * @var string $status
  * @var int $page
  * @var int $perPage
  * @var int $totalPages
- * @var int $totalCategories
+ * @var int $totalWarehouses
  * @var array{type: string, text: string}|null $statusMessage
  * @var string $sortBy
  * @var string $sortDir
  * @var string $csrfToken Disediakan shell-start.php, dipakai di setiap form POST.
  */
-$pageTitle = 'Kategori';
-$activeNav = 'categories';
+$pageTitle = 'Gudang';
+$activeNav = 'warehouses';
 require __DIR__ . '/../layout/shell-start.php';
 
-$buildPageUrl = static function (int $targetPage) use ($search, $perPage, $sortBy, $sortDir): string {
-    $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir];
+$buildPageUrl = static function (int $targetPage) use ($search, $status, $perPage, $sortBy, $sortDir): string {
+    $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status];
     if ($search !== '') {
         $query['q'] = $search;
     }
 
-    return '/categories?' . http_build_query($query);
+    return '/warehouses?' . http_build_query($query);
 };
 
-$buildSortUrl = static function (string $column) use ($search, $perPage, $sortBy, $sortDir): string {
+$buildSortUrl = static function (string $column) use ($search, $status, $perPage, $sortBy, $sortDir): string {
     $nextDir = ($sortBy === $column && $sortDir === 'asc') ? 'desc' : 'asc';
-    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $column, 'dir' => $nextDir];
+    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $column, 'dir' => $nextDir, 'status' => $status];
     if ($search !== '') {
         $query['q'] = $search;
     }
 
-    return '/categories?' . http_build_query($query);
+    return '/warehouses?' . http_build_query($query);
 };
 
 // Heroicons chevron-up/chevron-down (24x24), ditampilkan mengecil jadi 12px
@@ -45,9 +46,9 @@ $sortIcon = static function (string $dir): string {
 ?>
             <div class="page-header">
                 <div>
-                    <h1>Kategori</h1>
-                    <?php if ($totalCategories > 0): ?>
-                        <p class="page-header__meta"><?= $totalCategories ?> kategori</p>
+                    <h1>Gudang</h1>
+                    <?php if ($totalWarehouses > 0): ?>
+                        <p class="page-header__meta"><?= $totalWarehouses ?> gudang</p>
                     <?php endif; ?>
                 </div>
             </div>
@@ -64,22 +65,24 @@ $sortIcon = static function (string $dir): string {
             <?php endif; ?>
 
             <div class="list-toolbar">
-                <form method="get" action="/categories" class="search-box">
+                <div class="list-toolbar__filters">
+                <form method="get" action="/warehouses" class="search-box">
                     <input type="hidden" name="per_page" value="<?= $perPage ?>">
                     <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
                     <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
-                    <label for="category-search" class="sr-only">Cari kategori</label>
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+                    <label for="warehouse-search" class="sr-only">Cari gudang</label>
                     <input
                         type="search"
-                        id="category-search"
+                        id="warehouse-search"
                         name="q"
                         value="<?= htmlspecialchars($search) ?>"
-                        placeholder="Cari nama kategori..."
+                        placeholder="Cari nama atau lokasi gudang..."
                         class="search-box__input"
                         autocomplete="off"
                     >
                     <?php if ($search !== ''): ?>
-                        <a href="/categories" class="search-box__clear" aria-label="Hapus pencarian">
+                        <a href="/warehouses" class="search-box__clear" aria-label="Hapus pencarian">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                             </svg>
@@ -91,28 +94,45 @@ $sortIcon = static function (string $dir): string {
                         </svg>
                     </button>
                 </form>
-                <a href="/categories/create" class="btn btn-primary" data-modal-target="#category-create-dialog">
+
+                <form method="get" action="/warehouses" class="status-filter">
+                    <?php if ($search !== ''): ?>
+                        <input type="hidden" name="q" value="<?= htmlspecialchars($search) ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="per_page" value="<?= $perPage ?>">
+                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
+                    <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
+                    <label for="warehouse-status" class="sr-only">Filter status</label>
+                    <select id="warehouse-status" name="status" data-auto-submit>
+                        <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>Semua Status</option>
+                        <option value="active" <?= $status === 'active' ? 'selected' : '' ?>>Aktif</option>
+                        <option value="inactive" <?= $status === 'inactive' ? 'selected' : '' ?>>Nonaktif</option>
+                    </select>
+                </form>
+                </div>
+
+                <a href="/warehouses/create" class="btn btn-primary" data-modal-target="#warehouse-create-dialog">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
                     </svg>
-                    <span>Tambah Kategori</span>
+                    <span>Tambah Gudang</span>
                 </a>
             </div>
 
-            <?php if ($categories === [] && $search !== ''): ?>
+            <?php if ($warehouses === [] && ($search !== '' || $status !== 'all')): ?>
                 <div class="empty-state">
-                    <p>Tidak ada kategori yang cocok dengan pencarian "<?= htmlspecialchars($search) ?>".</p>
-                    <a href="/categories" class="btn-link">Hapus pencarian</a>
+                    <p>Tidak ada gudang yang cocok dengan filter saat ini.</p>
+                    <a href="/warehouses" class="btn-link">Hapus filter</a>
                 </div>
-            <?php elseif ($categories === []): ?>
+            <?php elseif ($warehouses === []): ?>
                 <div class="empty-state">
-                    <p>Belum ada kategori. Tambahkan kategori pertama untuk mulai mengelompokkan produk.</p>
-                    <a href="/categories/create" class="btn btn-primary" data-modal-target="#category-create-dialog">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
-                    </svg>
-                    <span>Tambah Kategori</span>
-                </a>
+                    <p>Belum ada gudang. Tambahkan gudang pertama untuk mulai mencatat stok per lokasi.</p>
+                    <a href="/warehouses/create" class="btn btn-primary" data-modal-target="#warehouse-create-dialog">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15"/>
+                        </svg>
+                        <span>Tambah Gudang</span>
+                    </a>
                 </div>
             <?php else: ?>
                 <div class="data-table-wrap">
@@ -128,38 +148,48 @@ $sortIcon = static function (string $dir): string {
                                     </a>
                                 </th>
                                 <th>
-                                    <a href="<?= htmlspecialchars($buildSortUrl('description')) ?>" class="data-table__sort">
-                                        Deskripsi
-                                        <?php if ($sortBy === 'description'): ?>
+                                    <a href="<?= htmlspecialchars($buildSortUrl('location')) ?>" class="data-table__sort">
+                                        Lokasi
+                                        <?php if ($sortBy === 'location'): ?>
                                             <span aria-hidden="true"><?= $sortIcon($sortDir) ?></span>
                                         <?php endif; ?>
                                     </a>
                                 </th>
+                                <th>Status</th>
                                 <th>Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <?php foreach ($categories as $category): ?>
+                            <?php foreach ($warehouses as $warehouse): ?>
                             <tr>
-                                <td><?= htmlspecialchars($category->name) ?></td>
-                                <td class="text-muted"><?= htmlspecialchars($category->description ?? '-') ?></td>
+                                <td><?= htmlspecialchars($warehouse->name) ?></td>
+                                <td class="text-muted"><?= htmlspecialchars($warehouse->location ?? '-') ?></td>
+                                <td>
+                                    <?php if ($warehouse->isActive): ?>
+                                        <span class="badge badge-success">Aktif</span>
+                                    <?php else: ?>
+                                        <span class="badge badge-muted">Nonaktif</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td class="data-table__actions">
                                     <div class="data-table__actions-group">
                                         <a
-                                            href="/categories/<?= $category->id ?>/edit"
+                                            href="/warehouses/<?= $warehouse->id ?>/edit"
                                             class="btn-link"
-                                            data-modal-target="#category-edit-dialog"
-                                            data-form-action="/categories/<?= $category->id ?>"
-                                            data-name="<?= htmlspecialchars($category->name) ?>"
-                                            data-description="<?= htmlspecialchars($category->description ?? '') ?>"
+                                            data-modal-target="#warehouse-edit-dialog"
+                                            data-form-action="/warehouses/<?= $warehouse->id ?>"
+                                            data-name="<?= htmlspecialchars($warehouse->name) ?>"
+                                            data-location="<?= htmlspecialchars($warehouse->location ?? '') ?>"
                                         >Ubah</a>
                                         <form
                                             method="post"
-                                            action="/categories/<?= $category->id ?>/delete"
-                                            data-confirm="Hapus kategori &quot;<?= htmlspecialchars($category->name, ENT_QUOTES) ?>&quot;? Tindakan ini tidak bisa dibatalkan."
+                                            action="/warehouses/<?= $warehouse->id ?>/toggle-active"
+                                            data-confirm="<?= $warehouse->isActive ? 'Nonaktifkan' : 'Aktifkan' ?> gudang &quot;<?= htmlspecialchars($warehouse->name, ENT_QUOTES) ?>&quot;?"
                                         >
                                             <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
-                                            <button type="submit" class="btn-link btn-link--danger">Hapus</button>
+                                            <button type="submit" class="btn-link<?= $warehouse->isActive ? ' btn-link--danger' : '' ?>">
+                                                <?= $warehouse->isActive ? 'Nonaktifkan' : 'Aktifkan' ?>
+                                            </button>
                                         </form>
                                     </div>
                                 </td>
@@ -170,13 +200,14 @@ $sortIcon = static function (string $dir): string {
                 </div>
 
                 <div class="pagination-bar">
-                    <form method="get" action="/categories" class="per-page-select">
+                    <form method="get" action="/warehouses" class="per-page-select">
                         <?php if ($search !== ''): ?>
                             <input type="hidden" name="q" value="<?= htmlspecialchars($search) ?>">
                         <?php endif; ?>
                         <input type="hidden" name="page" value="1">
                         <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
                         <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
+                        <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
                         <label for="per-page">Baris per halaman</label>
                         <select id="per-page" name="per_page" data-auto-submit>
                             <?php foreach ([5, 10, 25, 50, 100] as $option): ?>
@@ -219,9 +250,9 @@ $sortIcon = static function (string $dir): string {
                 </div>
             <?php endif; ?>
 
-            <dialog id="category-create-dialog" class="modal" aria-labelledby="category-create-title">
+            <dialog id="warehouse-create-dialog" class="modal" aria-labelledby="warehouse-create-title">
                 <div class="modal__header">
-                    <h2 id="category-create-title">Tambah Kategori</h2>
+                    <h2 id="warehouse-create-title">Tambah Gudang</h2>
                     <button type="button" class="modal__close" data-modal-close aria-label="Tutup">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -229,24 +260,24 @@ $sortIcon = static function (string $dir): string {
                     </button>
                 </div>
                 <div class="modal__body">
-                    <form method="post" action="/categories" novalidate>
+                    <form method="post" action="/warehouses" novalidate>
                         <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <div class="form-field">
-                            <label for="create-name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
+                            <label for="create-warehouse-name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
                             <input
                                 type="text"
-                                id="create-name"
+                                id="create-warehouse-name"
                                 name="name"
                                 maxlength="150"
                                 data-field="name"
-                                aria-describedby="create-name-required"
+                                aria-describedby="create-warehouse-name-required"
                                 required
                             >
-                            <p class="form-hint form-hint--error" id="create-name-required" hidden>Nama kategori wajib diisi.</p>
+                            <p class="form-hint form-hint--error" id="create-warehouse-name-required" hidden>Nama gudang wajib diisi.</p>
                         </div>
                         <div class="form-field">
-                            <label for="create-description">Deskripsi</label>
-                            <textarea id="create-description" name="description" rows="3" data-field="description"></textarea>
+                            <label for="create-warehouse-location">Lokasi</label>
+                            <input type="text" id="create-warehouse-location" name="location" maxlength="255" data-field="location">
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">Simpan</button>
@@ -256,9 +287,9 @@ $sortIcon = static function (string $dir): string {
                 </div>
             </dialog>
 
-            <dialog id="category-edit-dialog" class="modal" aria-labelledby="category-edit-title">
+            <dialog id="warehouse-edit-dialog" class="modal" aria-labelledby="warehouse-edit-title">
                 <div class="modal__header">
-                    <h2 id="category-edit-title">Ubah Kategori</h2>
+                    <h2 id="warehouse-edit-title">Ubah Gudang</h2>
                     <button type="button" class="modal__close" data-modal-close aria-label="Tutup">
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
@@ -266,24 +297,24 @@ $sortIcon = static function (string $dir): string {
                     </button>
                 </div>
                 <div class="modal__body">
-                    <form method="post" action="/categories" novalidate>
+                    <form method="post" action="/warehouses" novalidate>
                         <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                         <div class="form-field">
-                            <label for="edit-name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
+                            <label for="edit-warehouse-name">Nama <span class="required-mark" aria-hidden="true">*</span></label>
                             <input
                                 type="text"
-                                id="edit-name"
+                                id="edit-warehouse-name"
                                 name="name"
                                 maxlength="150"
                                 data-field="name"
-                                aria-describedby="edit-name-required"
+                                aria-describedby="edit-warehouse-name-required"
                                 required
                             >
-                            <p class="form-hint form-hint--error" id="edit-name-required" hidden>Nama kategori wajib diisi.</p>
+                            <p class="form-hint form-hint--error" id="edit-warehouse-name-required" hidden>Nama gudang wajib diisi.</p>
                         </div>
                         <div class="form-field">
-                            <label for="edit-description">Deskripsi</label>
-                            <textarea id="edit-description" name="description" rows="3" data-field="description"></textarea>
+                            <label for="edit-warehouse-location">Lokasi</label>
+                            <input type="text" id="edit-warehouse-location" name="location" maxlength="255" data-field="location">
                         </div>
                         <div class="form-actions">
                             <button type="submit" class="btn btn-primary">Simpan</button>

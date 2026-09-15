@@ -345,13 +345,21 @@ p {
 }
 
 .data-table td.data-table__actions {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
   white-space: nowrap;
 }
 
-.data-table__actions form {
+/* Wadah flex di DALAM <td>, bukan di <td> itu sendiri - display:flex
+   langsung di sebuah table-cell bisa bikin browser menghitung tinggi
+   baris beda untuk kolom itu, jadi border-bottom-nya "putus" sepiksel
+   dibanding kolom lain. */
+
+.data-table__actions-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.data-table__actions-group form {
   margin: 0;
 }
 
@@ -475,6 +483,17 @@ p {
   margin-bottom: var(--space-4);
 }
 
+/* Wadah search + filter (mis. status) di sisi kiri toolbar - dikelompokkan
+   supaya berdekatan, terpisah dari tombol aksi utama yang didorong ke
+   kanan lewat justify-content: space-between di .list-toolbar. */
+
+.list-toolbar__filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
 /* Search box - input polos (submit lewat Enter, form cuma punya satu text
    field jadi browser submit otomatis) + tombol clear (x) di kanan yang
    tampil hanya saat ada pencarian aktif. Dipakai ulang untuk semua daftar
@@ -482,9 +501,8 @@ p {
 
 .search-box {
   position: relative;
-  flex: 1;
-  min-width: 0;
-  max-width: 20rem;
+  width: 24rem;
+  max-width: 100%;
   margin: 0;
 }
 
@@ -532,6 +550,22 @@ p {
 
 .search-box__clear:hover,
 .search-box__submit:hover {
+  color: var(--color-text);
+}
+
+/* Filter status (mis. Aktif/Nonaktif/Semua) di toolbar daftar - dipakai
+   ulang untuk daftar master data lain yang punya status aktif/nonaktif. */
+
+.status-filter {
+  margin: 0;
+}
+
+.status-filter select {
+  font: inherit;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background-color: var(--color-surface);
   color: var(--color-text);
 }
 

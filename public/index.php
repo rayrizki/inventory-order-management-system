@@ -8,14 +8,17 @@ require __DIR__ . '/../config/database.php';
 use App\Controller\AuthController;
 use App\Controller\CategoryController;
 use App\Controller\DashboardController;
+use App\Controller\WarehouseController;
 use App\Exception\ForbiddenException;
 use App\Exception\NotFoundException;
 use App\Exception\UnauthenticatedException;
 use App\Http\Router;
 use App\Repository\MySqlCategoryRepository;
 use App\Repository\MySqlUserRepository;
+use App\Repository\MySqlWarehouseRepository;
 use App\Service\AuthService;
 use App\Service\CategoryService;
+use App\Service\WarehouseService;
 use App\Session\AuthGuard;
 use App\Session\CsrfToken;
 use App\Session\PhpSessionAdapter;
@@ -44,6 +47,10 @@ $categoryRepository = new MySqlCategoryRepository($pdo);
 $categoryService = new CategoryService($categoryRepository);
 $categoryController = new CategoryController($categoryService, $authGuard);
 
+$warehouseRepository = new MySqlWarehouseRepository($pdo);
+$warehouseService = new WarehouseService($warehouseRepository);
+$warehouseController = new WarehouseController($warehouseService, $authGuard);
+
 $router = new Router(new CsrfToken($session));
 
 $router->get('/login', [$authController, 'showLoginForm']);
@@ -58,6 +65,13 @@ $router->post('/categories', [$categoryController, 'create']);
 $router->get('/categories/{id}/edit', [$categoryController, 'showEditForm']);
 $router->post('/categories/{id}', [$categoryController, 'update']);
 $router->post('/categories/{id}/delete', [$categoryController, 'delete']);
+
+$router->get('/warehouses', [$warehouseController, 'index']);
+$router->get('/warehouses/create', [$warehouseController, 'showCreateForm']);
+$router->post('/warehouses', [$warehouseController, 'create']);
+$router->get('/warehouses/{id}/edit', [$warehouseController, 'showEditForm']);
+$router->post('/warehouses/{id}', [$warehouseController, 'update']);
+$router->post('/warehouses/{id}/toggle-active', [$warehouseController, 'toggleActive']);
 
 try {
     $router->dispatch($_SERVER['REQUEST_METHOD'], $path);
