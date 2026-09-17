@@ -8,7 +8,12 @@ Aplikasi web inventory & order management, 3 peran (Admin, Sales, Warehouse Staf
 
 ## Status
 
-Slice yang sudah selesai: **Login & Logout (AUTH-01, AUTH-02)**. Slice lain (master data, purchase order, sales order, dashboard/laporan) masih dalam pengerjaan bertahap - lihat `docs/quality/tech-debt.md` untuk keterbatasan yang disadari saat ini.
+Slice yang sudah selesai:
+
+- **Login & Logout (AUTH-01, AUTH-02)**.
+- **Master Data & Katalog**: Kategori, Gudang (WH-01), Supplier, Customer, Produk (PRD-01 CRUD dasar + halaman detail dengan rincian stok per gudang). Search/filter/sort/pagination (FIND-01) sudah diterapkan di kelima modul. Akses baca Produk terbuka untuk ketiga role (Admin/Sales/Warehouse Staff) sesuai §1.2; modul Master Data lain dan seluruh aksi mutasi tetap Admin-only, ditegakkan di server.
+
+Slice berikutnya (Purchase Order, Sales Order, dashboard/laporan) belum dikerjakan. Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
 
 ## Instalasi (Docker)
 

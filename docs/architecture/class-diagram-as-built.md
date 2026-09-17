@@ -1,8 +1,8 @@
 # Class Diagram - As-Built (DESIGN-01)
 
-Dibuat setelah slice Auth (AUTH-01/AUTH-02) dan dua slice pertama Master Data
-(Kategori, Gudang) stabil. Hanya memuat kelas yang **benar-benar ada di
-kode** saat ini - modul yang belum dikerjakan (Produk, Supplier, Customer,
+Dibuat setelah slice Auth (AUTH-01/AUTH-02) dan empat slice pertama Master
+Data (Kategori, Gudang, Supplier, Customer) stabil. Hanya memuat kelas yang
+**benar-benar ada di kode** saat ini - modul yang belum dikerjakan (Produk,
 Purchase Order, Sales Order, Stock Ledger, Dashboard, Laporan) sengaja tidak
 digambar di sini supaya diagram ini tidak berbohong soal apa yang sudah
 selesai; diagram initial (`docs/planning/class-diagram-initial.md`) tetap
@@ -279,6 +279,196 @@ classDiagram
     note for WarehouseService "setActive() TIDAK melempar ConflictException\nseperti CategoryService::deleteCategory() -\ntoggle status tidak pernah berisiko merusak\nreferensi data lain (baris tetap ada), beda\ndari hard-delete yang butuh pengecekan pemakaian."
 ```
 
+## Diagram E - Master Data: Supplier & Customer (§1.3, keduanya identik strukturnya)
+
+Didemonstrasikan sekali pakai `Supplier` sebagai contoh, mengikuti gaya yang
+sama dengan Diagram 0 di diagram initial. `Customer` (`CustomerEntity`,
+`CustomerRepositoryInterface`, `MySqlCustomerRepository`,
+`InMemoryCustomerRepository`, `CustomerService`, `CustomerController`)
+adalah kelas-kelas terpisah dengan nama tabel (`customers`) dan pesan
+Indonesia yang berbeda ("Customer" bukan "Supplier"), tapi bentuk method,
+constant, dan relasinya identik satu-satu dengan yang digambar di sini -
+tidak digambar ulang di sini supaya tidak duplikatif.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class Supplier {
+        +int? id
+        +string name
+        +string? contact
+        +string? address
+        +bool isActive
+    }
+
+    class SupplierRepositoryInterface {
+        <<interface>>
+        +findById(int id) Supplier?
+        +save(Supplier supplier) Supplier
+        +listAll(string? search, bool? isActive, int limit, int offset, string sortBy, string sortDir) Supplier[]
+        +countAll(string? search, bool? isActive) int
+        +setActive(int id, bool isActive) void
+    }
+    class MySqlSupplierRepository {
+        -PDO pdo
+    }
+    class InMemorySupplierRepository {
+        -Supplier[] suppliers
+    }
+
+    class SupplierService {
+        +const PER_PAGE = 10
+        -SupplierRepositoryInterface suppliers
+        +listSuppliers(string? search, bool? isActive, int page, int perPage, string sortBy, string sortDir) Supplier[]
+        +countSuppliers(string? search, bool? isActive) int
+        +getSupplierById(int id) Supplier
+        +createSupplier(string name, string? contact, string? address) Supplier
+        +updateSupplier(int id, string name, string? contact, string? address) Supplier
+        +setActive(int id, bool isActive) void
+    }
+
+    class SupplierController {
+        +const ALLOWED_PER_PAGE
+        +const ALLOWED_SORT_COLUMNS
+        +const STATUS_FILTERS
+        +const STATUS_MESSAGES
+        -SupplierService supplierService
+        -AuthGuard guard
+        +index() void
+        +showCreateForm() void
+        +create() void
+        +showEditForm(string id) void
+        +update(string id) void
+        +toggleActive(string id) void
+    }
+
+    SupplierRepositoryInterface <|.. MySqlSupplierRepository : implements
+    SupplierRepositoryInterface <|.. InMemorySupplierRepository : implements
+    SupplierService --> SupplierRepositoryInterface : constructor injection (interface)
+    SupplierController --> SupplierService : constructor injection (concrete)
+    SupplierController --> AuthGuard : constructor injection (concrete)
+    SupplierService ..> NotFoundException : throws
+    SupplierService ..> ValidationException : throws
+    SupplierController ..> ValidationException : catches
+
+    note for Supplier "Sama bentuknya dengan Warehouse (Diagram D):\nnonaktifkan bukan hapus, karena §1.3 eksplisit\nmenyebut Supplier (dan Customer) dinonaktifkan -\nlebih eksplisit daripada Warehouse yang cuma\ntersirat dari kolom is_active-nya."
+    note for SupplierRepositoryInterface "Field tambahan `address` (dan search 3 kolom:\nname/contact/address) dibanding Warehouse yang\ncuma 2 kolom (name/location) - satu-satunya\nperbedaan struktural nyata dari Diagram D."
+```
+
+## Diagram F - Master Data: Produk & Stok (PRD-01 CRUD dasar, WH-01)
+
+```mermaid
+classDiagram
+    direction LR
+
+    class Product {
+        +int? id
+        +string sku
+        +string name
+        +int categoryId
+        +string unit
+        +float buyPrice
+        +float sellPrice
+        +int reorderPoint
+        +string? imagePath
+        +bool isActive
+    }
+
+    class ProductRepositoryInterface {
+        <<interface>>
+        +findById(int id) Product?
+        +findBySku(string sku) Product?
+        +save(Product product) Product
+        +listAll(string? search, int? categoryId, bool? isActive, int limit, int offset, string sortBy, string sortDir) Product[]
+        +countAll(string? search, int? categoryId, bool? isActive) int
+        +setActive(int id, bool isActive) void
+    }
+    class MySqlProductRepository {
+        -PDO pdo
+    }
+    class InMemoryProductRepository {
+        -Product[] products
+    }
+
+    class ProductService {
+        +const PER_PAGE = 10
+        -ProductRepositoryInterface products
+        -CategoryRepositoryInterface categories
+        +listProducts(string? search, int? categoryId, bool? isActive, int page, int perPage, string sortBy, string sortDir) Product[]
+        +countProducts(string? search, int? categoryId, bool? isActive) int
+        +getProductById(int id) Product
+        +createProduct(array input) Product
+        +updateProduct(int id, array input) Product
+        +setActive(int id, bool isActive) void
+        -validate(array input, int? excludeId) array
+    }
+
+    class ProductController {
+        +const CATEGORY_DROPDOWN_LIMIT
+        +const ALLOWED_PER_PAGE
+        +const ALLOWED_SORT_COLUMNS
+        +const STATUS_FILTERS
+        +const STATUS_MESSAGES
+        -ProductService productService
+        -CategoryService categoryService
+        -StockService stockService
+        -AuthGuard guard
+        +index() void
+        +show(string id) void
+        +showCreateForm() void
+        +create() void
+        +showEditForm(string id) void
+        +update(string id) void
+        +toggleActive(string id) void
+    }
+
+    class ProductStock {
+        +int productId
+        +int warehouseId
+        +int quantity
+    }
+    class ProductStockRepositoryInterface {
+        <<interface>>
+        +findByProduct(int productId) ProductStock[]
+    }
+    class MySqlProductStockRepository {
+        -PDO pdo
+    }
+    class InMemoryProductStockRepository {
+        -ProductStock[] rows
+    }
+    class StockService {
+        +const WAREHOUSE_LIMIT
+        -ProductStockRepositoryInterface stockRepository
+        -WarehouseRepositoryInterface warehouseRepository
+        +getStockSummary(int productId) array
+    }
+
+    ProductRepositoryInterface <|.. MySqlProductRepository : implements
+    ProductRepositoryInterface <|.. InMemoryProductRepository : implements
+    ProductService --> ProductRepositoryInterface : constructor injection (interface)
+    ProductService --> CategoryRepositoryInterface : constructor injection (interface)
+    ProductController --> ProductService : constructor injection (concrete)
+    ProductController --> CategoryService : constructor injection (concrete)
+    ProductController --> StockService : constructor injection (concrete)
+    ProductController --> AuthGuard : constructor injection (concrete)
+    ProductService ..> NotFoundException : throws
+    ProductService ..> ValidationException : throws
+    ProductController ..> ValidationException : catches
+
+    ProductStockRepositoryInterface <|.. MySqlProductStockRepository : implements
+    ProductStockRepositoryInterface <|.. InMemoryProductStockRepository : implements
+    StockService --> ProductStockRepositoryInterface : constructor injection (interface)
+    StockService --> WarehouseRepositoryInterface : constructor injection (interface)
+
+    note for ProductService "BEDA dari semua Service Master Data sebelumnya:\nmenerima DUA repository interface lewat constructor,\nbukan satu. CategoryRepositoryInterface dipakai untuk\nmemvalidasi category_id benar-benar ada (FK) sebelum\nsimpan - bukan cuma format angka. validate() juga\nmengumpulkan SEMUA error field sekaligus ke satu array\n(pola baru - Service Master Data sebelumnya cuma\nvalidasi satu field 'name')."
+    note for ProductStockRepositoryInterface "Baca-saja untuk saat ini (WH-01) - findByProduct()\nsaja, tidak ada save(). Baris product_stock nanti\nditulis StockService lewat alur goods receipt (PO-01)/\ngoods issue (SO-01) dalam satu transaksi bersama\nStockLedger (ARCH-02), bukan lewat repository ini\nsecara langsung - method tulis ditambahkan begitu\nPO/SO dikerjakan, bukan diprediksi sekarang (YAGNI)."
+    note for StockService "getStockSummary() gabungkan seluruh gudang AKTIF\n(WarehouseRepositoryInterface::listAll) dengan baris\nproduct_stock yang ada (left-join di memori, bukan\nSQL) - gudang tanpa baris dianggap quantity 0. Karena\nPO-01 belum dibangun saat modul ini ditulis, seluruh\nproduk otomatis quantity 0 - membuktikan alur BACA\nbenar dulu, sebelum jalur TULIS (goods receipt) ada."
+```
+
+Catatan tambahan (di luar diagram): brief §2 eksplisit meminta upload gambar (`imagePath`) dan filter status stok (FIND-01) ditunda sampai "alur transaksi inti stabil" - `Product.imagePath` sudah ada di entity/schema tapi belum ada jalur upload/validasi file, dan `ProductController::index()` belum punya filter `status_stok`. Dicatat sebagai keterbatasan disengaja di `docs/quality/tech-debt.md` #5, bukan celah yang terlewat.
+
 ## Apa yang berubah dari initial ke as-built, dan kenapa
 
 1. **`CurrentUser` bertambah properti `name`.** Initial hanya menyiapkan `id`+`role` untuk kebutuhan otorisasi (`requireRole()`); kebutuhan menampilkan *siapa* yang login (bukan cuma perannya) di sidebar baru muncul belakangan, jadi properti ini ditambah begitu use case-nya nyata - bukan diprediksi di awal.
@@ -288,3 +478,7 @@ classDiagram
 5. **`ConflictException` (exception baru) tidak ada di initial.** Diagram initial hanya menyiapkan `ValidationException` (kesalahan input) dan `NotFoundException` (data tidak ada). Kasus "aksi ditolak karena aturan bisnis" (kategori masih dipakai produk lain) adalah kondisi ketiga yang berbeda dari keduanya, jadi ditambahkan sebagai exception tersendiri mengikuti pola yang sama.
 6. **`CsrfToken` (class baru) tidak ada di initial maupun di draf as-built pertama.** CSRF baru disadari sebagai celah nyata setelah slice Kategori selesai (tercatat di `docs/quality/tech-debt.md` #4) - ditambahkan sebagai dependency `Router`, bukan diperiksa manual di tiap Controller, supaya tidak ada endpoint POST yang lolos karena lupa ditambahkan satu per satu.
 7. **`WarehouseRepositoryInterface` sengaja punya bentuk berbeda dari `CategoryRepositoryInterface`**, bukan cuma disalin lalu di-rename. Gudang punya kolom `is_active` di schema (Kategori tidak), jadi repository-nya punya dimensi filter status + `setActive()`, menggantikan `isInUse()`/`delete()` milik Kategori - lihat ADR-0004 untuk alasan lengkap kenapa dua entity Master Data yang polanya mirip ini justru sengaja dibuat tidak seragam.
+8. **`Supplier`/`Customer` mengikuti pola `Warehouse`, bukan `Category`** - konsisten dengan poin 7, karena §1.3 eksplisit menyebut "Produk, supplier, dan customer dinonaktifkan, bukan dihapus permanen". Satu-satunya beda struktural dari `Warehouse`: ada field ketiga (`address`) dan search mencakup 3 kolom (name/contact/address) bukan 2 - tidak digambar sebagai diagram terpisah untuk Customer karena bentuknya identik satu-satu dengan Supplier (lihat Diagram E).
+9. **`ProductService` (Diagram F) adalah Service Master Data pertama dengan dua dependency repository.** Semua Service sebelumnya (Category/Warehouse/Supplier/Customer) hanya menerima satu repository. Produk butuh `CategoryRepositoryInterface` tambahan untuk memvalidasi `category_id` sungguhan ada (FK) sebelum simpan - initial hanya mensketsa `Product` sebagai contoh pola generik (Diagram 0), tidak menunjukkan dependency silang ini karena validasi FK-nya baru terlihat perlu saat coding.
+10. **`ProductStock`/`ProductStockRepositoryInterface`/`StockService` (semuanya baru) tidak digambar sama sekali di initial**, meski `ProductStock` ada di tabel field-minimum §1.3. Initial fokus ke CRUD Produk (PRD-01); kebutuhan WH-01 (tampilan stok per gudang) baru dibangun belakangan sebagai halaman detail Produk (VIEW-01) yang sekaligus jadi bukti alur baca sebelum PO-01 menulis ke tabel yang sama. `ProductStockRepositoryInterface` sengaja cuma `findByProduct()` (baca), bukan `save()` - method tulis ditunda ke goods receipt/issue (YAGNI, lihat catatan di Diagram F).
+11. **Akses baca Produk (`index()`/`show()`) dilonggarkan dari Admin-only menjadi seluruh role yang login**, berbeda dari Kategori/Gudang/Supplier/Customer yang tetap Admin-only. Ini koreksi, bukan fitur baru: draf awal salah menyamaratakan seluruh grup sidebar "Master Data" (termasuk Produk) sebagai admin-only (tech-debt #2), padahal §1.2 eksplisit memberi Sales "hanya melihat katalog" dan Warehouse Staff "hanya melihat produk & stok" - keduanya butuh baca Produk untuk modul Sales Order/Purchase Order berikutnya. Mutasi (create/update/toggle-active) tetap `requireRole([Admin])` di server.
