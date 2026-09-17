@@ -32,8 +32,10 @@ $navGroups = [
     'General' => [
         'dashboard' => ['label' => 'Dashboard', 'href' => '/dashboard'],
     ],
-    'Master Data' => [
+    'Katalog' => [
         'products' => ['label' => 'Produk', 'href' => '/products'],
+    ],
+    'Master Data' => [
         'categories' => ['label' => 'Kategori', 'href' => '/categories'],
         'warehouses' => ['label' => 'Gudang', 'href' => '/warehouses'],
         'suppliers' => ['label' => 'Supplier', 'href' => '/suppliers'],
@@ -51,12 +53,12 @@ $navGroups = [
     ],
 ];
 
-// Master Data dan Administrasi cuma berisi halaman kelola (CRUD) yang memang
-// admin-only (§1.2: Sales/Warehouse Staff cuma "melihat", bukan mengelola;
-// mengelola user murni Admin) - disembunyikan dari role lain (tech-debt #2).
-// Dashboard/Transaksi/Laporan tetap tampil ke semua role karena granularity
-// per-item-nya (mis. Sales cuma lihat SO miliknya) belum relevan sampai
-// modulnya benar-benar dibangun.
+// 'Katalog' (Produk) sengaja dipisah dari 'Master Data': §1.2 memberi Sales
+// "hanya melihat katalog" dan Warehouse Staff "hanya melihat produk & stok"
+// untuk PRODUK secara spesifik, sedangkan Kategori/Gudang/Supplier/Customer
+// tidak disebutkan boleh dilihat role lain sama sekali - jadi hanya grup
+// 'Master Data' dan 'Administrasi' (kelola user, murni Admin) yang
+// disembunyikan dari role selain Admin (tech-debt #2).
 if ($currentUser->role !== \App\Entity\Role::Admin) {
     unset($navGroups['Master Data'], $navGroups['Administrasi']);
 }

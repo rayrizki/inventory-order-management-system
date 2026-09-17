@@ -472,6 +472,44 @@ p {
   max-width: 32rem;
 }
 
+/* Card halaman detail (read-only) - beda dari .form-card karena tidak
+   membungkus form input, jadi lebar maksimumnya dilonggarkan supaya
+   tabel rincian stok per gudang (WH-01) tidak sesak. Dipakai ulang untuk
+   detail Produk/PO/SO. */
+
+.detail-card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+  max-width: 48rem;
+  margin-bottom: var(--space-5);
+}
+
+.detail-card h2 {
+  margin: 0 0 var(--space-4);
+  font-size: 1rem;
+}
+
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4);
+  margin: 0;
+}
+
+.detail-grid dt {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin-bottom: 2px;
+}
+
+.detail-grid dd {
+  margin: 0;
+  font-weight: 600;
+}
+
 /* List toolbar - baris search/filter di atas data-table. Dipakai ulang di
    semua halaman daftar (Kategori, dan nanti Produk/PO/SO untuk FIND-01). */
 

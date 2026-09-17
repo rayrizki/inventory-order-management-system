@@ -7,17 +7,28 @@ require __DIR__ . '/../config/database.php';
 
 use App\Controller\AuthController;
 use App\Controller\CategoryController;
+use App\Controller\CustomerController;
 use App\Controller\DashboardController;
+use App\Controller\ProductController;
+use App\Controller\SupplierController;
 use App\Controller\WarehouseController;
 use App\Exception\ForbiddenException;
 use App\Exception\NotFoundException;
 use App\Exception\UnauthenticatedException;
 use App\Http\Router;
 use App\Repository\MySqlCategoryRepository;
+use App\Repository\MySqlCustomerRepository;
+use App\Repository\MySqlProductRepository;
+use App\Repository\MySqlProductStockRepository;
+use App\Repository\MySqlSupplierRepository;
 use App\Repository\MySqlUserRepository;
 use App\Repository\MySqlWarehouseRepository;
 use App\Service\AuthService;
 use App\Service\CategoryService;
+use App\Service\CustomerService;
+use App\Service\ProductService;
+use App\Service\StockService;
+use App\Service\SupplierService;
 use App\Service\WarehouseService;
 use App\Session\AuthGuard;
 use App\Session\CsrfToken;
@@ -51,6 +62,20 @@ $warehouseRepository = new MySqlWarehouseRepository($pdo);
 $warehouseService = new WarehouseService($warehouseRepository);
 $warehouseController = new WarehouseController($warehouseService, $authGuard);
 
+$supplierRepository = new MySqlSupplierRepository($pdo);
+$supplierService = new SupplierService($supplierRepository);
+$supplierController = new SupplierController($supplierService, $authGuard);
+
+$customerRepository = new MySqlCustomerRepository($pdo);
+$customerService = new CustomerService($customerRepository);
+$customerController = new CustomerController($customerService, $authGuard);
+
+$productRepository = new MySqlProductRepository($pdo);
+$productService = new ProductService($productRepository, $categoryRepository);
+$productStockRepository = new MySqlProductStockRepository($pdo);
+$stockService = new StockService($productStockRepository, $warehouseRepository);
+$productController = new ProductController($productService, $categoryService, $stockService, $authGuard);
+
 $router = new Router(new CsrfToken($session));
 
 $router->get('/login', [$authController, 'showLoginForm']);
@@ -72,6 +97,28 @@ $router->post('/warehouses', [$warehouseController, 'create']);
 $router->get('/warehouses/{id}/edit', [$warehouseController, 'showEditForm']);
 $router->post('/warehouses/{id}', [$warehouseController, 'update']);
 $router->post('/warehouses/{id}/toggle-active', [$warehouseController, 'toggleActive']);
+
+$router->get('/suppliers', [$supplierController, 'index']);
+$router->get('/suppliers/create', [$supplierController, 'showCreateForm']);
+$router->post('/suppliers', [$supplierController, 'create']);
+$router->get('/suppliers/{id}/edit', [$supplierController, 'showEditForm']);
+$router->post('/suppliers/{id}', [$supplierController, 'update']);
+$router->post('/suppliers/{id}/toggle-active', [$supplierController, 'toggleActive']);
+
+$router->get('/customers', [$customerController, 'index']);
+$router->get('/customers/create', [$customerController, 'showCreateForm']);
+$router->post('/customers', [$customerController, 'create']);
+$router->get('/customers/{id}/edit', [$customerController, 'showEditForm']);
+$router->post('/customers/{id}', [$customerController, 'update']);
+$router->post('/customers/{id}/toggle-active', [$customerController, 'toggleActive']);
+
+$router->get('/products', [$productController, 'index']);
+$router->get('/products/create', [$productController, 'showCreateForm']);
+$router->post('/products', [$productController, 'create']);
+$router->get('/products/{id}/edit', [$productController, 'showEditForm']);
+$router->get('/products/{id}', [$productController, 'show']);
+$router->post('/products/{id}', [$productController, 'update']);
+$router->post('/products/{id}/toggle-active', [$productController, 'toggleActive']);
 
 try {
     $router->dispatch($_SERVER['REQUEST_METHOD'], $path);
