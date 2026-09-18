@@ -33,6 +33,20 @@ $buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $st
     return '/products?' . http_build_query($query);
 };
 
+// Beda dari buildPageUrl(1): tombol X di search box harus menghapus q,
+// bukan cuma reset ke halaman 1 - kalau pakai buildPageUrl(1) di sini,
+// q ikut ditambahkan lagi karena $search masih terisi (tombol X cuma
+// tampil saat $search !== ''), jadi pencariannya tidak pernah benar-benar
+// hilang.
+$buildClearSearchUrl = static function () use ($categoryId, $status, $perPage, $sortBy, $sortDir): string {
+    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status];
+    if ($categoryId !== null) {
+        $query['category_id'] = $categoryId;
+    }
+
+    return '/products?' . http_build_query($query);
+};
+
 $buildSortUrl = static function (string $column) use ($search, $categoryId, $status, $perPage, $sortBy, $sortDir): string {
     $nextDir = ($sortBy === $column && $sortDir === 'asc') ? 'desc' : 'asc';
     $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $column, 'dir' => $nextDir, 'status' => $status];
@@ -98,7 +112,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                         autocomplete="off"
                     >
                     <?php if ($search !== ''): ?>
-                        <a href="<?= htmlspecialchars($buildPageUrl(1)) ?>" class="search-box__clear" aria-label="Hapus pencarian">
+                        <a href="<?= htmlspecialchars($buildClearSearchUrl()) ?>" class="search-box__clear" aria-label="Hapus pencarian">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
                             </svg>

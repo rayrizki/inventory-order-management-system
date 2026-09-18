@@ -10,6 +10,7 @@ use App\Controller\CategoryController;
 use App\Controller\CustomerController;
 use App\Controller\DashboardController;
 use App\Controller\ProductController;
+use App\Controller\PurchaseOrderController;
 use App\Controller\SupplierController;
 use App\Controller\WarehouseController;
 use App\Exception\ForbiddenException;
@@ -20,13 +21,17 @@ use App\Repository\MySqlCategoryRepository;
 use App\Repository\MySqlCustomerRepository;
 use App\Repository\MySqlProductRepository;
 use App\Repository\MySqlProductStockRepository;
+use App\Repository\MySqlPurchaseOrderRepository;
+use App\Repository\MySqlStockLedgerRepository;
 use App\Repository\MySqlSupplierRepository;
 use App\Repository\MySqlUserRepository;
 use App\Repository\MySqlWarehouseRepository;
 use App\Service\AuthService;
 use App\Service\CategoryService;
 use App\Service\CustomerService;
+use App\Service\GoodsReceiptService;
 use App\Service\ProductService;
+use App\Service\PurchaseOrderService;
 use App\Service\StockService;
 use App\Service\SupplierService;
 use App\Service\WarehouseService;
@@ -76,6 +81,12 @@ $productStockRepository = new MySqlProductStockRepository($pdo);
 $stockService = new StockService($productStockRepository, $warehouseRepository);
 $productController = new ProductController($productService, $categoryService, $stockService, $authGuard);
 
+$purchaseOrderRepository = new MySqlPurchaseOrderRepository($pdo);
+$purchaseOrderService = new PurchaseOrderService($purchaseOrderRepository, $supplierRepository, $warehouseRepository, $productRepository);
+$stockLedgerRepository = new MySqlStockLedgerRepository($pdo);
+$goodsReceiptService = new GoodsReceiptService($purchaseOrderRepository, $productStockRepository, $stockLedgerRepository, $pdo);
+$purchaseOrderController = new PurchaseOrderController($purchaseOrderService, $goodsReceiptService, $supplierService, $warehouseService, $productService, $authGuard);
+
 $router = new Router(new CsrfToken($session));
 
 $router->get('/login', [$authController, 'showLoginForm']);
@@ -119,6 +130,14 @@ $router->get('/products/{id}/edit', [$productController, 'showEditForm']);
 $router->get('/products/{id}', [$productController, 'show']);
 $router->post('/products/{id}', [$productController, 'update']);
 $router->post('/products/{id}/toggle-active', [$productController, 'toggleActive']);
+
+$router->get('/purchase-orders', [$purchaseOrderController, 'index']);
+$router->get('/purchase-orders/create', [$purchaseOrderController, 'showCreateForm']);
+$router->post('/purchase-orders', [$purchaseOrderController, 'create']);
+$router->get('/purchase-orders/{id}', [$purchaseOrderController, 'show']);
+$router->post('/purchase-orders/{id}/mark-ordered', [$purchaseOrderController, 'markOrdered']);
+$router->post('/purchase-orders/{id}/cancel', [$purchaseOrderController, 'cancel']);
+$router->post('/purchase-orders/{id}/receive', [$purchaseOrderController, 'receiveGoods']);
 
 try {
     $router->dispatch($_SERVER['REQUEST_METHOD'], $path);

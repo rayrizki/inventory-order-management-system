@@ -74,6 +74,21 @@ p {
   margin-bottom: var(--space-4);
 }
 
+/* Baris berisi 2+ field berdampingan (mis. SKU + Nama) - dipakai form
+   Produk dan Purchase Order yang field-nya lebih banyak dari master data
+   lain. wrap ke 1 kolom di layar sempit (UI-01, 360px). */
+
+.form-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.form-row .form-field {
+  flex: 1 1 9rem;
+  min-width: 0;
+}
+
 .form-field label {
   font-size: 0.9rem;
   font-weight: 600;
@@ -284,6 +299,64 @@ p {
   color: var(--color-text);
 }
 
+/* Baris item PO/SO (produk + qty + harga per baris, jumlah baris dinamis).
+   Sengaja flex, bukan <table> - kolom produk di <table> ikut melebar penuh
+   sisa lebar (default table layout), menyisakan jarak kosong besar sebelum
+   kolom qty/harga; flex-basis di sini membuat tiap kolom proporsional, dan
+   flex-wrap otomatis menumpuk field ke bawah di layar sempit (UI-01) tanpa
+   perlu scroll horizontal maupun media query manual. */
+
+.item-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.item-row:first-child {
+  padding-top: 0;
+}
+
+.item-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.item-row .form-field {
+  margin-bottom: 0;
+  /* Tanpa ini, <select> tidak mau menyusut di bawah lebar teks option
+     terpanjangnya (nama produk) walau flex-shrink sudah diset - min-width
+     bawaan flex item adalah "auto" (=lebar konten), bukan 0. Penyebab
+     overflow horizontal 41px yang ditemukan di 375px sebelum diperbaiki. */
+  min-width: 0;
+}
+
+.item-row__product {
+  flex: 3 1 14rem;
+}
+
+.item-row__qty {
+  flex: 1 1 6rem;
+  max-width: 9rem;
+}
+
+.item-row__price {
+  flex: 1 1 7rem;
+  max-width: 10rem;
+}
+
+.item-row__remove {
+  flex: 0 0 auto;
+  padding-top: 1.7rem;
+}
+
 /* Data table - overflow-x di wrapper-nya sendiri supaya body halaman
    tidak pernah scroll ke samping (Bab 3, modul CSS). */
 
@@ -391,6 +464,16 @@ p {
   color: var(--color-text-muted);
 }
 
+.badge-info {
+  background-color: var(--color-info-bg);
+  color: var(--color-info);
+}
+
+.badge-danger {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
 .form-actions {
   display: flex;
   gap: var(--space-3);
@@ -470,6 +553,33 @@ p {
   box-shadow: var(--shadow-sm);
   padding: var(--space-5);
   max-width: 32rem;
+}
+
+/* Form dengan banyak field (Produk) dikelompokkan jadi beberapa
+   .form-card--section berdampingan, bukan satu .form-card sempit yang
+   memanjang ke bawah dan menyisakan ruang kosong di kanan pada layar
+   lebar. auto-fit + minmax merapikan ke 1 kolom sendiri di layar sempit
+   (UI-01) tanpa media query manual. */
+
+.form-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(24rem, 1fr));
+  gap: var(--space-5);
+  max-width: 72rem;
+  align-items: stretch;
+}
+
+.form-card--section {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+}
+
+.form-card--section h2 {
+  margin: 0 0 var(--space-5);
+  font-size: 1.1rem;
 }
 
 /* Card halaman detail (read-only) - beda dari .form-card karena tidak

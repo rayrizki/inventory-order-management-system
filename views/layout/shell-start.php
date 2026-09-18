@@ -42,7 +42,7 @@ $navGroups = [
         'customers' => ['label' => 'Customer', 'href' => '/customers'],
     ],
     'Transaksi' => [
-        'purchase-orders' => ['label' => 'Purchase Order', 'href' => '/purchase-orders'],
+        'purchase-orders' => ['label' => 'Purchase Order', 'href' => '/purchase-orders', 'roles' => [\App\Entity\Role::Admin, \App\Entity\Role::WarehouseStaff]],
         'sales-orders' => ['label' => 'Sales Order', 'href' => '/sales-orders'],
     ],
     'Laporan' => [
@@ -61,6 +61,23 @@ $navGroups = [
 // disembunyikan dari role selain Admin (tech-debt #2).
 if ($currentUser->role !== \App\Entity\Role::Admin) {
     unset($navGroups['Master Data'], $navGroups['Administrasi']);
+}
+
+// Filter per-item lewat key 'roles' (kalau ada) - dipakai untuk item yang
+// modulnya sudah nyata dibangun dan aksesnya tidak seragam se-grup, mis.
+// Purchase Order (Admin+Warehouse Staff, Sales sama sekali tidak boleh -
+// beda dari Sales Order yang nanti (SO-01) justru boleh diakses Sales).
+// Item tanpa 'roles' tetap tampil ke semua role yang login (default lama,
+// dipertahankan untuk modul yang belum dibangun - tech-debt #2).
+foreach ($navGroups as $groupKey => $items) {
+    foreach ($items as $itemKey => $item) {
+        if (isset($item['roles']) && !in_array($currentUser->role, $item['roles'], true)) {
+            unset($navGroups[$groupKey][$itemKey]);
+        }
+    }
+    if ($navGroups[$groupKey] === []) {
+        unset($navGroups[$groupKey]);
+    }
 }
 ?>
 <!DOCTYPE html>

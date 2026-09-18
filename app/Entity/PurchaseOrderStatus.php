@@ -1,0 +1,14 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Entity;
+
+enum PurchaseOrderStatus: string
+{
+    case Draft = 'Draft';
+    case Ordered = 'Ordered';
+    case PartiallyReceived = 'PartiallyReceived';
+    case Received = 'Received';
+    case Cancelled = 'Cancelled';
+}

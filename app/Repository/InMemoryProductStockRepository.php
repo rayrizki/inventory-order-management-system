@@ -22,4 +22,17 @@ final class InMemoryProductStockRepository implements ProductStockRepositoryInte
             static fn (ProductStock $row): bool => $row->productId === $productId,
         ));
     }
+
+    public function incrementQuantity(int $productId, int $warehouseId, int $delta): void
+    {
+        foreach ($this->rows as $index => $row) {
+            if ($row->productId === $productId && $row->warehouseId === $warehouseId) {
+                $this->rows[$index] = new ProductStock($productId, $warehouseId, $row->quantity + $delta);
+
+                return;
+            }
+        }
+
+        $this->rows[] = new ProductStock($productId, $warehouseId, $delta);
+    }
 }

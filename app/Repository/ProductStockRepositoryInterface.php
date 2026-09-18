@@ -6,15 +6,20 @@ namespace App\Repository;
 
 use App\Entity\ProductStock;
 
-/**
- * Baca-saja untuk saat ini (WH-01). Baris product_stock nanti ditulis oleh
- * StockService lewat alur goods receipt (PO-01) / goods issue (SO-01) dalam
- * satu transaksi bersama StockLedger (ARCH-02) - bukan lewat method di sini.
- */
 interface ProductStockRepositoryInterface
 {
     /**
      * @return ProductStock[]
      */
     public function findByProduct(int $productId): array;
+
+    /**
+     * Upsert atomik (INSERT ... ON DUPLICATE KEY UPDATE) - baris belum tentu
+     * ada sebelum goods receipt pertama untuk kombinasi produk+gudang itu.
+     * Dipanggil GoodsReceiptService (PO-01) di dalam transaksi yang sama
+     * dengan penulisan StockLedger (ARCH-02); $delta negatif dipakai goods
+     * issue (SO-01) - guard "tidak boleh oversell" ada di lapisan pemanggil,
+     * bukan di sini.
+     */
+    public function incrementQuantity(int $productId, int $warehouseId, int $delta): void;
 }

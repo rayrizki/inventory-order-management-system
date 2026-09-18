@@ -23,6 +23,20 @@ final class MySqlProductStockRepository implements ProductStockRepositoryInterfa
         return array_map($this->hydrate(...), $statement->fetchAll());
     }
 
+    public function incrementQuantity(int $productId, int $warehouseId, int $delta): void
+    {
+        $statement = $this->pdo->prepare(
+            'INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES (:product_id, :warehouse_id, :quantity)
+             ON DUPLICATE KEY UPDATE quantity = quantity + :quantity_update'
+        );
+        $statement->execute([
+            'product_id' => $productId,
+            'warehouse_id' => $warehouseId,
+            'quantity' => $delta,
+            'quantity_update' => $delta,
+        ]);
+    }
+
     /**
      * @param array<string, mixed> $row
      */
