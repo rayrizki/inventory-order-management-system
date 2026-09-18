@@ -463,11 +463,168 @@ classDiagram
     StockService --> WarehouseRepositoryInterface : constructor injection (interface)
 
     note for ProductService "BEDA dari semua Service Master Data sebelumnya:\nmenerima DUA repository interface lewat constructor,\nbukan satu. CategoryRepositoryInterface dipakai untuk\nmemvalidasi category_id benar-benar ada (FK) sebelum\nsimpan - bukan cuma format angka. validate() juga\nmengumpulkan SEMUA error field sekaligus ke satu array\n(pola baru - Service Master Data sebelumnya cuma\nvalidasi satu field 'name')."
-    note for ProductStockRepositoryInterface "Baca-saja untuk saat ini (WH-01) - findByProduct()\nsaja, tidak ada save(). Baris product_stock nanti\nditulis StockService lewat alur goods receipt (PO-01)/\ngoods issue (SO-01) dalam satu transaksi bersama\nStockLedger (ARCH-02), bukan lewat repository ini\nsecara langsung - method tulis ditambahkan begitu\nPO/SO dikerjakan, bukan diprediksi sekarang (YAGNI)."
+    note for ProductStockRepositoryInterface "Baca-saja saat modul ini ditulis (WH-01) - findByProduct()\nsaja, tidak ada save(). PO-01 (Diagram G) menambahkan\nincrementQuantity() (upsert atomik) begitu goods receipt\nbenar-benar dikerjakan - method tulis ditambahkan saat\nuse case-nya nyata, bukan diprediksi sejak awal (YAGNI)."
     note for StockService "getStockSummary() gabungkan seluruh gudang AKTIF\n(WarehouseRepositoryInterface::listAll) dengan baris\nproduct_stock yang ada (left-join di memori, bukan\nSQL) - gudang tanpa baris dianggap quantity 0. Karena\nPO-01 belum dibangun saat modul ini ditulis, seluruh\nproduk otomatis quantity 0 - membuktikan alur BACA\nbenar dulu, sebelum jalur TULIS (goods receipt) ada."
 ```
 
 Catatan tambahan (di luar diagram): brief §2 eksplisit meminta upload gambar (`imagePath`) dan filter status stok (FIND-01) ditunda sampai "alur transaksi inti stabil" - `Product.imagePath` sudah ada di entity/schema tapi belum ada jalur upload/validasi file, dan `ProductController::index()` belum punya filter `status_stok`. Dicatat sebagai keterbatasan disengaja di `docs/quality/tech-debt.md` #5, bukan celah yang terlewat.
+
+## Diagram G - Purchase Order & Goods Receipt (PO-01, ARCH-02)
+
+```mermaid
+classDiagram
+    direction LR
+
+    class PurchaseOrderStatus {
+        <<enumeration>>
+        Draft
+        Ordered
+        PartiallyReceived
+        Received
+        Cancelled
+    }
+
+    class PurchaseOrderItem {
+        +int? id
+        +int? purchaseOrderId
+        +int productId
+        +int qty
+        +float buyPrice
+        +int receivedQty
+        +remainingQty() int
+    }
+
+    class PurchaseOrder {
+        +int? id
+        +int supplierId
+        +int warehouseId
+        +PurchaseOrderStatus status
+        +string orderDate
+        +int createdBy
+        +PurchaseOrderItem[] items
+    }
+
+    class PurchaseOrderRepositoryInterface {
+        <<interface>>
+        +findById(int id) PurchaseOrder?
+        +save(PurchaseOrder po) PurchaseOrder
+        +updateStatus(int id, PurchaseOrderStatus status) void
+        +incrementItemReceivedQty(int itemId, int delta) void
+        +listAll(string? search, PurchaseOrderStatus? status, int limit, int offset, string sortBy, string sortDir) PurchaseOrder[]
+        +countAll(string? search, PurchaseOrderStatus? status) int
+    }
+    class MySqlPurchaseOrderRepository {
+        -PDO pdo
+    }
+    class InMemoryPurchaseOrderRepository {
+        -PurchaseOrder[] purchaseOrders
+    }
+
+    class PurchaseOrderService {
+        +const PER_PAGE = 10
+        -PurchaseOrderRepositoryInterface purchaseOrders
+        -SupplierRepositoryInterface suppliers
+        -WarehouseRepositoryInterface warehouses
+        -ProductRepositoryInterface products
+        +listPurchaseOrders(...) PurchaseOrder[]
+        +countPurchaseOrders(...) int
+        +getPurchaseOrderById(int id) PurchaseOrder
+        +createPurchaseOrder(array input, int createdBy) PurchaseOrder
+        +markOrdered(int id) PurchaseOrder
+        +cancel(int id) PurchaseOrder
+    }
+
+    class StockMovementType {
+        <<enumeration>>
+        Receipt
+        Issue
+        Adjustment
+    }
+    class StockLedgerEntry {
+        +int? id
+        +int productId
+        +int warehouseId
+        +StockMovementType movementType
+        +int quantity
+        +string referenceType
+        +int referenceId
+        +int performedBy
+        +string? createdAt
+    }
+    class StockLedgerRepositoryInterface {
+        <<interface>>
+        +record(StockLedgerEntry entry) StockLedgerEntry
+        +findByReference(string referenceType, int referenceId) StockLedgerEntry[]
+    }
+    class MySqlStockLedgerRepository {
+        -PDO pdo
+    }
+    class InMemoryStockLedgerRepository {
+        -StockLedgerEntry[] entries
+    }
+
+    class GoodsReceiptService {
+        -PurchaseOrderRepositoryInterface purchaseOrders
+        -ProductStockRepositoryInterface stocks
+        -StockLedgerRepositoryInterface ledger
+        -PDO pdo
+        +receive(int purchaseOrderId, array receivedQtyByItemId, int performedBy) PurchaseOrder
+        +computeReceiptPlan(PurchaseOrder po, array receivedQtyByItemId) array
+        +getReceiptHistory(int purchaseOrderId) StockLedgerEntry[]
+    }
+
+    class PurchaseOrderController {
+        +const STATUS_FILTERS
+        +const STATUS_MESSAGES
+        -PurchaseOrderService purchaseOrderService
+        -GoodsReceiptService goodsReceiptService
+        -SupplierService supplierService
+        -WarehouseService warehouseService
+        -ProductService productService
+        -AuthGuard guard
+        +index() void
+        +show(string id) void
+        +showCreateForm() void
+        +create() void
+        +markOrdered(string id) void
+        +cancel(string id) void
+        +receiveGoods(string id) void
+    }
+
+    PurchaseOrder "1" *-- "many" PurchaseOrderItem
+    PurchaseOrder --> PurchaseOrderStatus
+    PurchaseOrderRepositoryInterface <|.. MySqlPurchaseOrderRepository : implements
+    PurchaseOrderRepositoryInterface <|.. InMemoryPurchaseOrderRepository : implements
+    PurchaseOrderService --> PurchaseOrderRepositoryInterface : constructor injection (interface)
+    PurchaseOrderService --> SupplierRepositoryInterface : constructor injection (interface)
+    PurchaseOrderService --> WarehouseRepositoryInterface : constructor injection (interface)
+    PurchaseOrderService --> ProductRepositoryInterface : constructor injection (interface)
+
+    StockLedgerEntry --> StockMovementType
+    StockLedgerRepositoryInterface <|.. MySqlStockLedgerRepository : implements
+    StockLedgerRepositoryInterface <|.. InMemoryStockLedgerRepository : implements
+
+    GoodsReceiptService --> PurchaseOrderRepositoryInterface : constructor injection (interface)
+    GoodsReceiptService --> ProductStockRepositoryInterface : constructor injection (interface)
+    GoodsReceiptService --> StockLedgerRepositoryInterface : constructor injection (interface)
+    GoodsReceiptService --> PDO : constructor injection (concrete - unit of work boundary, lihat ADR-0005)
+
+    PurchaseOrderController --> PurchaseOrderService : constructor injection (concrete)
+    PurchaseOrderController --> GoodsReceiptService : constructor injection (concrete)
+    PurchaseOrderController --> AuthGuard : constructor injection (concrete)
+    PurchaseOrderService ..> NotFoundException : throws
+    PurchaseOrderService ..> ValidationException : throws
+    PurchaseOrderService ..> ConflictException : throws
+    GoodsReceiptService ..> ValidationException : throws
+    GoodsReceiptService ..> ConflictException : throws
+    GoodsReceiptService ..> NotFoundException : throws
+
+    note for PurchaseOrderService "Dependency terbanyak dari semua Service sejauh ini\n(4 repository interface) - mencerminkan createPurchaseOrder()\nharus memvalidasi TIGA foreign key sekaligus (supplier,\ngudang, dan produk per baris item), bukan cuma satu\nseperti Produk memvalidasi kategori."
+    note for GoodsReceiptService "Dipisah dari PurchaseOrderService (bukan cuma\nmethod tambahan) karena computeReceiptPlan() murni\n(diuji tanpa PDO) sedangkan receive() butuh transaksi\nPDO nyata lintas 3 repository - lihat ADR-0005 untuk\nalasan lengkap kenapa PDO di-inject langsung di sini,\nsatu-satunya Service yang melakukannya."
+    note for PurchaseOrderRepositoryInterface "save() sengaja cuma insert (header+item sekaligus,\ndibungkus transaksi internal) - PO tidak diedit setelah\ndibuat, hanya status dan receivedQty per item yang\nberubah lewat updateStatus()/incrementItemReceivedQty()."
+```
+
+Catatan tambahan (di luar diagram): akses baca (`index()`/`show()`) dan aksi mutasi PO seluruhnya digerbang `requireRole([Admin, WarehouseStaff])` - beda dari Produk yang membuka akses baca ke seluruh role (§1.2 tidak memberi Sales visibilitas apa pun ke Purchase Order). Item sidebar "Purchase Order" disembunyikan dari Sales lewat filter per-item baru di `shell-start.php` (`$navGroups[...]['roles']`) - sebelumnya hanya bisa menyembunyikan satu grup utuh sekaligus.
 
 ## Apa yang berubah dari initial ke as-built, dan kenapa
 
@@ -482,3 +639,6 @@ Catatan tambahan (di luar diagram): brief §2 eksplisit meminta upload gambar (`
 9. **`ProductService` (Diagram F) adalah Service Master Data pertama dengan dua dependency repository.** Semua Service sebelumnya (Category/Warehouse/Supplier/Customer) hanya menerima satu repository. Produk butuh `CategoryRepositoryInterface` tambahan untuk memvalidasi `category_id` sungguhan ada (FK) sebelum simpan - initial hanya mensketsa `Product` sebagai contoh pola generik (Diagram 0), tidak menunjukkan dependency silang ini karena validasi FK-nya baru terlihat perlu saat coding.
 10. **`ProductStock`/`ProductStockRepositoryInterface`/`StockService` (semuanya baru) tidak digambar sama sekali di initial**, meski `ProductStock` ada di tabel field-minimum §1.3. Initial fokus ke CRUD Produk (PRD-01); kebutuhan WH-01 (tampilan stok per gudang) baru dibangun belakangan sebagai halaman detail Produk (VIEW-01) yang sekaligus jadi bukti alur baca sebelum PO-01 menulis ke tabel yang sama. `ProductStockRepositoryInterface` sengaja cuma `findByProduct()` (baca), bukan `save()` - method tulis ditunda ke goods receipt/issue (YAGNI, lihat catatan di Diagram F).
 11. **Akses baca Produk (`index()`/`show()`) dilonggarkan dari Admin-only menjadi seluruh role yang login**, berbeda dari Kategori/Gudang/Supplier/Customer yang tetap Admin-only. Ini koreksi, bukan fitur baru: draf awal salah menyamaratakan seluruh grup sidebar "Master Data" (termasuk Produk) sebagai admin-only (tech-debt #2), padahal §1.2 eksplisit memberi Sales "hanya melihat katalog" dan Warehouse Staff "hanya melihat produk & stok" - keduanya butuh baca Produk untuk modul Sales Order/Purchase Order berikutnya. Mutasi (create/update/toggle-active) tetap `requireRole([Admin])` di server.
+12. **`PurchaseOrderController` (Diagram G) menggabungkan tanggung jawab `PurchaseOrderController` DAN `GoodsReceiptController` yang di initial (Diagram 3) digambar terpisah.** Begitu coding dimulai, kedua "controller" itu sama-sama beroperasi di URL `/purchase-orders/{id}` (halaman detail yang sama menampilkan status PO sekaligus form goods receipt) - memisahkannya jadi dua class HTTP controller berarti dua class itu harus saling tahu URL/state satu sama lain tanpa manfaat nyata (initial mengasumsikan pemisahan HTTP-layer yang initial diagram juga tidak punya presedennya di modul lain). Pemisahan tanggung jawab yang sebenarnya penting (validasi vs transaksi) tetap dipertahankan satu tingkat di bawah, di `PurchaseOrderService` vs `GoodsReceiptService` - lihat poin 13.
+13. **`PurchaseOrderService` bertambah TIGA dependency dibanding initial** (initial cuma `ProductRepositoryInterface`; as-built menambah `SupplierRepositoryInterface`+`WarehouseRepositoryInterface`+tetap `ProductRepositoryInterface`, jadi total 4). `createPurchaseOrder()` harus memvalidasi tiga foreign key sekaligus (supplier, gudang tujuan, dan produk per baris item) sesuai VAL-01 - initial belum menunjukkan validasi selengkap ini karena ditulis sebelum bentuk form/tabel PO final.
+14. **`GoodsReceiptService` menerima `PDO` langsung lewat constructor** - satu-satunya Service di seluruh codebase yang melakukannya, tidak digambar di initial sama sekali (initial cuma menulis catatan teks "dibungkus 1 DB transaction" tanpa menunjukkan mekanismenya). Alasan lengkap: ADR-0005.

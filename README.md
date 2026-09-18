@@ -12,8 +12,9 @@ Slice yang sudah selesai:
 
 - **Login & Logout (AUTH-01, AUTH-02)**.
 - **Master Data & Katalog**: Kategori, Gudang (WH-01), Supplier, Customer, Produk (PRD-01 CRUD dasar + halaman detail dengan rincian stok per gudang). Search/filter/sort/pagination (FIND-01) sudah diterapkan di kelima modul. Akses baca Produk terbuka untuk ketiga role (Admin/Sales/Warehouse Staff) sesuai §1.2; modul Master Data lain dan seluruh aksi mutasi tetap Admin-only, ditegakkan di server.
+- **Purchase Order & Goods Receipt (PO-01, ARCH-02)**: create PO (Draft) dengan banyak item, ajukan ke supplier (Ordered), goods receipt penuh/sebagian dalam satu transaksi PDO yang menambah `product_stock` dan menulis `stock_ledger` (lihat ADR-0005), status otomatis PartiallyReceived/Received. Akses Admin + Warehouse Staff saja; Sales mendapat 403 dan item sidebar-nya disembunyikan.
 
-Slice berikutnya (Purchase Order, Sales Order, dashboard/laporan) belum dikerjakan. Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
+Slice berikutnya (Sales Order, dashboard/laporan) belum dikerjakan. Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Seed data belum menyertakan Purchase Order/Sales Order (§7.1 minta 25 order gabungan) - ditunda sampai Sales Order selesai supaya variasi statusnya lengkap sekaligus. Lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
 
 ## Instalasi (Docker)
 
