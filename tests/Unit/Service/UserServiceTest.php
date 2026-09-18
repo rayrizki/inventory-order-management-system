@@ -14,6 +14,10 @@ use PHPUnit\Framework\TestCase;
 
 final class UserServiceTest extends TestCase
 {
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     private function validInput(array $overrides = []): array
     {
         return array_merge([

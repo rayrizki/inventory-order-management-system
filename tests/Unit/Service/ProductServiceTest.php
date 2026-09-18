@@ -22,6 +22,10 @@ final class ProductServiceTest extends TestCase
         return new ProductService($products ?? new InMemoryProductRepository(), $categories);
     }
 
+    /**
+     * @param array<string, mixed> $overrides
+     * @return array<string, mixed>
+     */
     private function validInput(array $overrides = []): array
     {
         return array_merge([

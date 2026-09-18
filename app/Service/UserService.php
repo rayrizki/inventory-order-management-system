@@ -103,7 +103,12 @@ final class UserService
     }
 
     /**
-     * @param array{name: string, email: string, password: string, role: string} $input
+     * Tipe param sengaja "optional" (bukan wajib semua key ada) - $input ini
+     * boundary ke $_POST lewat Controller::readInput(), yang secara runtime
+     * tidak dijamin lengkap sekuat PHPDoc-nya - fallback `??` di bawah bukan
+     * kode mati.
+     *
+     * @param array{name?: string, email?: string, password?: string, role?: string} $input
      * @return array{name: string, email: string, password: string, role: Role}
      */
     private function validate(array $input, ?int $excludeId, bool $passwordRequired): array

@@ -16,8 +16,9 @@ Slice yang sudah selesai:
 - **Manajemen User (USR-01)**: Admin dapat menambah/melihat/mengubah/menonaktifkan akun Sales dan Warehouse Staff (email unik, password di-hash). Modul ini Admin-only sepenuhnya termasuk untuk baca - Sales/Warehouse Staff mendapat 403 dan tidak melihat halamannya sama sekali.
 - **Penanganan error (ERR-01)**: exception tak terduga (bug kode, koneksi database putus) tidak lagi menampilkan stack trace ke user - dicatat ke log server, ditampilkan sebagai 500 generik.
 - **Endpoint JSON API (API-01)**: `GET /api/products/{sku}/availability` - stok per gudang dalam format JSON, autentikasi sama seperti halaman biasa, kode status 200/401/404 yang tepat.
+- **Static analysis (TEST-03)**: PHPStan level 6, 0 error. Lihat `docs/quality/static-analysis.md`.
 
-Slice berikutnya (Sales Order, dashboard/laporan) belum dikerjakan. Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Seed data belum menyertakan Purchase Order/Sales Order (§7.1 minta 25 order gabungan) - ditunda sampai Sales Order selesai supaya variasi statusnya lengkap sekaligus. Static analysis report (TEST-03) juga belum ada - lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
+Slice berikutnya (Sales Order, dashboard/laporan) belum dikerjakan. Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Seed data belum menyertakan Purchase Order/Sales Order (§7.1 minta 25 order gabungan) - ditunda sampai Sales Order selesai supaya variasi statusnya lengkap sekaligus. Lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
 
 ## Instalasi (Docker)
 
@@ -45,6 +46,14 @@ docker compose exec app vendor/bin/phpunit
 ```
 
 Menjalankan unit test (`tests/Unit`, tanpa DB) dan integration test (`tests/Integration`, terhadap MySQL asli di container `db`) sekaligus.
+
+## Static analysis
+
+```bash
+docker compose exec app vendor/bin/phpstan analyse --memory-limit=512M
+```
+
+PHPStan level 6, 0 error - lihat `docs/quality/static-analysis.md` untuk detail.
 
 ## Struktur proyek
 

@@ -68,6 +68,9 @@ final class MySqlPurchaseOrderRepositoryTest extends TestCase
         $this->pdo->prepare('DELETE FROM categories WHERE id = :id')->execute(['id' => $this->categoryId]);
     }
 
+    /**
+     * @param PurchaseOrderItem[]|null $items
+     */
     private function makePurchaseOrder(?array $items = null): PurchaseOrder
     {
         $items ??= [new PurchaseOrderItem(null, null, $this->productId, 10, 10000, 0)];

@@ -116,7 +116,12 @@ final class PurchaseOrderService
      * error per-item diberi key "items.{index}.{field}" supaya view bisa
      * menandai baris yang salah secara spesifik, bukan cuma pesan generik.
      *
-     * @param array{supplier_id: string, warehouse_id: string, order_date: string, items: array<int, array{product_id: string, qty: string, buy_price: string}>} $input
+     * Tipe param sengaja "optional" (bukan wajib semua key ada) - $input ini
+     * boundary ke $_POST lewat Controller::readInput(), yang secara runtime
+     * tidak dijamin lengkap sekuat PHPDoc-nya (mis. field hilang dari form
+     * yang dimodifikasi manual) - fallback `??` di bawah bukan kode mati.
+     *
+     * @param array{supplier_id?: string, warehouse_id?: string, order_date?: string, items?: array<int, array{product_id?: string, qty?: string, buy_price?: string}>} $input
      * @return array{supplier_id: int, warehouse_id: int, order_date: string, items: PurchaseOrderItem[]}
      */
     private function validate(array $input): array

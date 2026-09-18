@@ -190,6 +190,9 @@ final class PurchaseOrderController
         }
     }
 
+    /**
+     * @param array<string, string> $receiptErrors
+     */
     private function renderShow(int $id, array $receiptErrors = []): void
     {
         $purchaseOrder = $this->purchaseOrderService->getPurchaseOrderById($id);
