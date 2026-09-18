@@ -55,6 +55,21 @@ final class ProductService
     }
 
     /**
+     * Dipakai API-01 (GET /api/products/{sku}/availability) - lookup by SKU
+     * dari URL, bukan id numerik.
+     */
+    public function getProductBySku(string $sku): Product
+    {
+        $product = $this->products->findBySku($sku);
+
+        if ($product === null) {
+            throw new NotFoundException();
+        }
+
+        return $product;
+    }
+
+    /**
      * @param array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string} $input
      */
     public function createProduct(array $input): Product

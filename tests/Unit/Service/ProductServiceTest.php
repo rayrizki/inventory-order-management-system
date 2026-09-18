@@ -171,4 +171,25 @@ final class ProductServiceTest extends TestCase
         self::assertCount(1, $result);
         self::assertSame('Pulpen', $result[0]->name);
     }
+
+    public function testGetProductBySkuReturnsMatchingProduct(): void
+    {
+        $products = new InMemoryProductRepository([
+            new Product(1, 'SKU-001', 'Kabel HDMI', 1, 'pcs', 10000, 15000, 5, null, true),
+        ]);
+        $service = $this->makeService($products);
+
+        $product = $service->getProductBySku('SKU-001');
+
+        self::assertSame(1, $product->id);
+    }
+
+    public function testGetProductBySkuThrowsNotFoundForUnknownSku(): void
+    {
+        $service = $this->makeService();
+
+        $this->expectException(NotFoundException::class);
+
+        $service->getProductBySku('SKU-TIDAK-ADA');
+    }
 }

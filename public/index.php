@@ -9,6 +9,7 @@ use App\Controller\AuthController;
 use App\Controller\CategoryController;
 use App\Controller\CustomerController;
 use App\Controller\DashboardController;
+use App\Controller\ProductAvailabilityApiController;
 use App\Controller\ProductController;
 use App\Controller\PurchaseOrderController;
 use App\Controller\SupplierController;
@@ -107,6 +108,7 @@ $productService = new ProductService($productRepository, $categoryRepository);
 $productStockRepository = new MySqlProductStockRepository($pdo);
 $stockService = new StockService($productStockRepository, $warehouseRepository);
 $productController = new ProductController($productService, $categoryService, $stockService, $authGuard);
+$productAvailabilityApiController = new ProductAvailabilityApiController($productService, $stockService, $authGuard);
 
 $purchaseOrderRepository = new MySqlPurchaseOrderRepository($pdo);
 $purchaseOrderService = new PurchaseOrderService($purchaseOrderRepository, $supplierRepository, $warehouseRepository, $productRepository);
@@ -173,18 +175,50 @@ $router->get('/users/{id}/edit', [$userController, 'showEditForm']);
 $router->post('/users/{id}', [$userController, 'update']);
 $router->post('/users/{id}/toggle-active', [$userController, 'toggleActive']);
 
+// API-01: satu endpoint JSON terpisah dari halaman HTML biasa.
+$router->get('/api/products/{sku}/availability', [$productAvailabilityApiController, 'availability']);
+
+// Request ke /api/* butuh format response error yang beda dari halaman HTML
+// (JSON + kode status yang tepat, bukan redirect/halaman teks polos) -
+// dicek sekali di sini, dipakai oleh keempat catch block di bawah.
+$isApiRequest = str_starts_with($path, '/api/');
+
+/**
+ * @param array<string, mixed> $payload
+ */
+function renderJsonError(int $statusCode, array $payload): never
+{
+    http_response_code($statusCode);
+    header('Content-Type: application/json');
+    echo json_encode($payload);
+    exit;
+}
+
 try {
     $router->dispatch($_SERVER['REQUEST_METHOD'], $path);
 } catch (UnauthenticatedException) {
+    if ($isApiRequest) {
+        renderJsonError(401, ['error' => 'Unauthenticated']);
+    }
     // Akses tanpa login diarahkan ke login (ERR-01).
     header('Location: /login', true, 303);
     exit;
 } catch (ForbiddenException) {
+    if ($isApiRequest) {
+        renderJsonError(403, ['error' => 'Forbidden']);
+    }
     http_response_code(403);
     echo '403 Forbidden';
 } catch (NotFoundException) {
+    if ($isApiRequest) {
+        renderJsonError(404, ['error' => 'Not Found']);
+    }
     http_response_code(404);
     echo '404 Not Found';
 } catch (\Throwable $exception) {
+    if ($isApiRequest) {
+        error_log(sprintf('[500] %s in %s:%d', $exception->getMessage(), $exception->getFile(), $exception->getLine()));
+        renderJsonError(500, ['error' => 'Internal Server Error']);
+    }
     renderServerError($exception);
 }
