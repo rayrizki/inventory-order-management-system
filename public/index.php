@@ -48,8 +48,31 @@ if ($path !== '/' && is_file(__DIR__ . $path)) {
     return false;
 }
 
+/**
+ * ERR-01: exception tak terduga (bug kode, koneksi DB putus, dst) tidak
+ * boleh menampilkan stack trace ke user - dicatat ke error log server,
+ * ditampilkan sebagai 500 generik. display_errors juga dimatikan di level
+ * PHP (lihat docker/errors.ini) sebagai lapis kedua.
+ */
+function renderServerError(\Throwable $exception): never
+{
+    error_log(sprintf('[500] %s in %s:%d', $exception->getMessage(), $exception->getFile(), $exception->getLine()));
+    http_response_code(500);
+    echo '500 Internal Server Error';
+    exit;
+}
+
+// Koneksi database dibungkus try/catch sendiri (bukan cuma try/catch di
+// sekitar dispatch() di bawah) - kegagalan koneksi terjadi SEBELUM router
+// sempat jalan sama sekali, jadi harus ditangkap terpisah supaya tidak
+// lolos sebagai halaman kosong bawaan PHP.
+try {
+    $pdo = createPdoConnection();
+} catch (\Throwable $exception) {
+    renderServerError($exception);
+}
+
 // Wiring manual (constructor injection, tanpa DI container) - ARCH-01.
-$pdo = createPdoConnection();
 $session = new PhpSessionAdapter();
 $authGuard = new AuthGuard($session);
 
@@ -151,4 +174,6 @@ try {
 } catch (NotFoundException) {
     http_response_code(404);
     echo '404 Not Found';
+} catch (\Throwable $exception) {
+    renderServerError($exception);
 }
