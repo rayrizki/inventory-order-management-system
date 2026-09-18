@@ -314,3 +314,259 @@ INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
     ((SELECT id FROM products WHERE sku = 'BYA-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 20),
     ((SELECT id FROM products WHERE sku = 'BYA-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 20),
     ((SELECT id FROM products WHERE sku = 'BYA-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 12);
+
+-- =========================================================
+-- Seed - Supplier & Customer (§1.3), dipakai referensi 25 order di bawah
+-- =========================================================
+
+INSERT INTO suppliers (name, contact, address, is_active) VALUES
+    ('CV Sumber Makmur Elektronik', 'Budi Santoso - 081234567801', 'Jakarta', 1),
+    ('PT Grosir Alat Tulis Nusantara', 'Siti Aminah - 081234567802', 'Bandung', 1),
+    ('CV Mitra Perkakas Jaya', 'Agus Wijaya - 081234567803', 'Surabaya', 1),
+    ('UD Sumber Pangan Sejahtera', 'Dewi Lestari - 081234567804', 'Semarang', 1);
+
+INSERT INTO customers (name, contact, address, is_active) VALUES
+    ('Toko Berkah Jaya', 'Hendra Kusuma - 081298765401', 'Jakarta', 1),
+    ('CV Anugerah Sejahtera', 'Rina Wulandari - 081298765402', 'Bekasi', 1),
+    ('Toko Makmur Abadi', 'Joko Purnomo - 081298765403', 'Surabaya', 1),
+    ('PT Cahaya Nusantara Retail', 'Maya Sari - 081298765404', 'Tangerang', 1);
+
+-- =========================================================
+-- Seed - 25 order gabungan PO+SO (§7.1 "minimal 25 order gabungan (PO+SO)
+-- dengan variasi status, termasuk contoh yang PendingApproval dan
+-- Cancelled") - dibutuhkan FIND-01 (pagination order teruji dengan data
+-- nyata, bukan cuma skenario kosong) dan DASH-01/REPORT-01 berikutnya
+-- (butuh data order sungguhan supaya agregasinya bermakna).
+--
+-- Ditulis sebagai urutan INSERT tunggal (bukan lewat Service/Controller
+-- PHP - seed dijalankan murni oleh MySQL saat container init, sebelum
+-- aplikasi PHP ada koneksi) menggunakan @po_id/@so_id (LAST_INSERT_ID())
+-- untuk menghubungkan header ke item/ledger tanpa menebak id secara
+-- hardcode. Untuk PO berstatus PartiallyReceived/Received dan SO berstatus
+-- Fulfilled - yaitu status yang di aplikasi nyata SELALU dihasilkan lewat
+-- transaksi GoodsReceiptService/GoodsIssueService yang menulis
+-- product_stock+stock_ledger sekaligus (ARCH-02) - baris stock_ledger dan
+-- penyesuaian product_stock ditulis di sini juga, supaya seed data ini
+-- tetap konsisten dengan invarian yang sama (StockLedger tidak pernah lepas
+-- dari ProductStock) meski ditulis lewat SQL langsung, bukan lewat service.
+-- Status lain (Draft/Ordered/Cancelled/PendingApproval/Approved) belum
+-- pernah menyentuh stok sama sekali di aplikasi nyata, jadi sengaja tidak
+-- diberi baris ledger atau perubahan stok di sini juga.
+-- =========================================================
+
+-- --- Purchase Order 1-3: Draft (belum diajukan, belum menyentuh stok) ---
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Sumber Makmur Elektronik'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Draft', '2026-09-14', (SELECT id FROM users WHERE email = 'admin@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'ELK-002'), 10, 45000);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Draft', '2026-09-15', (SELECT id FROM users WHERE email = 'warehouse2@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'PKK-001'), 8, 250000);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'PT Grosir Alat Tulis Nusantara'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Draft', '2026-09-16', (SELECT id FROM users WHERE email = 'admin@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'ATK-002'), 20, 42000);
+
+-- --- Purchase Order 4-7: Ordered (sudah diajukan ke supplier, belum ada barang datang) ---
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Sumber Makmur Elektronik'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Ordered', '2026-09-05', (SELECT id FROM users WHERE email = 'warehouse2@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'ELK-001'), 15, 25000);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Ordered', '2026-09-06', (SELECT id FROM users WHERE email = 'admin@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'FRN-002'), 10, 90000);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'UD Sumber Pangan Sejahtera'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Ordered', '2026-09-07', (SELECT id FROM users WHERE email = 'warehouse2@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'PTP-002'), 15, 45000);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'PT Grosir Alat Tulis Nusantara'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Ordered', '2026-09-08', (SELECT id FROM users WHERE email = 'admin@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'BAP-001'), 20, 22000);
+
+-- --- Purchase Order 8-10: PartiallyReceived (sebagian barang sudah datang) ---
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Sumber Makmur Elektronik'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'PartiallyReceived', '2026-08-20', (SELECT id FROM users WHERE email = 'warehouse1@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'ELK-002'), 20, 45000, 10);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'ELK-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Receipt', 10, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse1@iom.test'), '2026-08-25 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'ELK-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 10)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'PartiallyReceived', '2026-08-22', (SELECT id FROM users WHERE email = 'warehouse2@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'FRN-001'), 10, 150000, 4);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'FRN-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Receipt', 4, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse2@iom.test'), '2026-08-27 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'FRN-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 4)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'PartiallyReceived', '2026-08-25', (SELECT id FROM users WHERE email = 'warehouse1@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'PKK-001'), 12, 250000, 5);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'PKK-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Receipt', 5, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse1@iom.test'), '2026-08-29 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'PKK-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 5)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+-- --- Purchase Order 11-14: Received (seluruh barang sudah diterima) ---
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Sumber Makmur Elektronik'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Received', '2026-08-01', (SELECT id FROM users WHERE email = 'warehouse2@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'ELK-002'), 15, 45000, 15);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'ELK-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Receipt', 15, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse2@iom.test'), '2026-08-06 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'ELK-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 15)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Received', '2026-08-03', (SELECT id FROM users WHERE email = 'warehouse1@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'OTM-002'), 10, 180000, 10);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'OTM-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Receipt', 10, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse1@iom.test'), '2026-08-08 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'OTM-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 10)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Received', '2026-08-05', (SELECT id FROM users WHERE email = 'warehouse2@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'MHB-002'), 12, 120000, 12);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'MHB-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Receipt', 12, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse2@iom.test'), '2026-08-10 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'MHB-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 12)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'CV Mitra Perkakas Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Received', '2026-08-07', (SELECT id FROM users WHERE email = 'warehouse1@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price, received_qty) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'BAP-002'), 15, 65000, 15);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'BAP-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Receipt', 15, 'purchase_order', @po_id, (SELECT id FROM users WHERE email = 'warehouse1@iom.test'), '2026-08-12 09:00:00');
+INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
+    ((SELECT id FROM products WHERE sku = 'BAP-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 15)
+    ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity);
+
+-- --- Purchase Order 15: Cancelled ---
+
+INSERT INTO purchase_orders (supplier_id, warehouse_id, status, order_date, created_by) VALUES
+    ((SELECT id FROM suppliers WHERE name = 'UD Sumber Pangan Sejahtera'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Cancelled', '2026-09-01', (SELECT id FROM users WHERE email = 'admin@iom.test'));
+SET @po_id = LAST_INSERT_ID();
+INSERT INTO purchase_order_items (purchase_order_id, product_id, qty, buy_price) VALUES
+    (@po_id, (SELECT id FROM products WHERE sku = 'PTP-001'), 20, 12000);
+
+-- --- Sales Order 1-2: Draft (belum diajukan, belum menyentuh stok) ---
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'Toko Berkah Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Draft', (SELECT id FROM users WHERE email = 'sales1@iom.test'), '2026-09-14 10:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'KSC-001'), 10, 15000);
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'CV Anugerah Sejahtera'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Draft', (SELECT id FROM users WHERE email = 'sales2@iom.test'), '2026-09-15 10:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'PTP-001'), 15, 20000);
+
+-- --- Sales Order 3-4: PendingApproval (sudah diajukan, menunggu Admin) ---
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'Toko Makmur Abadi'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'PendingApproval', (SELECT id FROM users WHERE email = 'sales1@iom.test'), '2026-09-12 11:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'BYA-001'), 10, 95000);
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'PT Cahaya Nusantara Retail'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'PendingApproval', (SELECT id FROM users WHERE email = 'sales2@iom.test'), '2026-09-13 11:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'MMN-001'), 20, 32000);
+
+-- --- Sales Order 5-6: Approved (sudah disetujui Admin, menunggu goods issue) ---
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, approved_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'Toko Berkah Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Approved', (SELECT id FROM users WHERE email = 'sales1@iom.test'), (SELECT id FROM users WHERE email = 'admin@iom.test'), '2026-09-08 09:30:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'ATK-001'), 15, 28000);
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, approved_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'CV Anugerah Sejahtera'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Approved', (SELECT id FROM users WHERE email = 'sales2@iom.test'), (SELECT id FROM users WHERE email = 'admin@iom.test'), '2026-09-09 09:30:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'PDP-002'), 10, 40000);
+
+-- --- Sales Order 7-9: Fulfilled (goods issue sudah diproses, stok berkurang) ---
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, approved_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'Toko Makmur Abadi'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Fulfilled', (SELECT id FROM users WHERE email = 'sales1@iom.test'), (SELECT id FROM users WHERE email = 'admin@iom.test'), '2026-08-15 09:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'OOR-001'), 15, 75000);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'OOR-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Issue', 15, 'sales_order', @so_id, (SELECT id FROM users WHERE email = 'warehouse1@iom.test'), '2026-08-16 14:00:00');
+UPDATE product_stock SET quantity = quantity - 15
+    WHERE product_id = (SELECT id FROM products WHERE sku = 'OOR-001') AND warehouse_id = (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta');
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, approved_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'PT Cahaya Nusantara Retail'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Fulfilled', (SELECT id FROM users WHERE email = 'sales2@iom.test'), (SELECT id FROM users WHERE email = 'admin@iom.test'), '2026-08-18 09:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'PKK-002'), 15, 55000);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'PKK-002'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Issue', 15, 'sales_order', @so_id, (SELECT id FROM users WHERE email = 'warehouse1@iom.test'), '2026-08-19 14:00:00');
+UPDATE product_stock SET quantity = quantity - 15
+    WHERE product_id = (SELECT id FROM products WHERE sku = 'PKK-002') AND warehouse_id = (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta');
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, approved_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'Toko Berkah Jaya'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Fulfilled', (SELECT id FROM users WHERE email = 'sales1@iom.test'), (SELECT id FROM users WHERE email = 'admin@iom.test'), '2026-08-20 09:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'PDP-001'), 8, 195000);
+INSERT INTO stock_ledger (product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at) VALUES
+    ((SELECT id FROM products WHERE sku = 'PDP-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 'Issue', 8, 'sales_order', @so_id, (SELECT id FROM users WHERE email = 'warehouse2@iom.test'), '2026-08-21 14:00:00');
+UPDATE product_stock SET quantity = quantity - 8
+    WHERE product_id = (SELECT id FROM products WHERE sku = 'PDP-001') AND warehouse_id = (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya');
+
+-- --- Sales Order 10: Cancelled ---
+
+INSERT INTO sales_orders (customer_id, warehouse_id, status, created_by, created_at) VALUES
+    ((SELECT id FROM customers WHERE name = 'CV Anugerah Sejahtera'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 'Cancelled', (SELECT id FROM users WHERE email = 'sales2@iom.test'), '2026-09-01 10:00:00');
+SET @so_id = LAST_INSERT_ID();
+INSERT INTO sales_order_items (sales_order_id, product_id, qty, sell_price) VALUES
+    (@so_id, (SELECT id FROM products WHERE sku = 'BAP-001'), 10, 35000);

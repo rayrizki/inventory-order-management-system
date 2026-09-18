@@ -42,7 +42,7 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
 | VIEW-01 | List, detail, empty state | **Sebagian** | Empty state & detail page fungsional di semua modul (diverifikasi Playwright/curl per slice); **belum ada file screenshot tersimpan** sebagai bukti eksplisit yang diminta brief |
-| FIND-01 | Search/filter/sort/pagination + seed 30 produk & 25 order | **Sebagian** | Search/filter/sort/pagination selesai untuk Produk, PO, SO; filter status stok (low/normal) Produk belum (tech-debt #5); seed 25 order gabungan PO+SO belum (tech-debt #6) - sedang dikerjakan |
+| FIND-01 | Search/filter/sort/pagination + seed 30 produk & 25 order | **Sebagian** | Search/filter/sort/pagination selesai untuk Produk, PO, SO; seed 25 order gabungan PO+SO selesai (tech-debt #6, `docs/testing/seed-data-verification.md`) - PO kini teruji 2 halaman pagination dengan data nyata; filter status stok (low/normal) Produk masih belum (tech-debt #5) |
 | DASH-01 | Dashboard per role dari query agregasi | Belum | Giliran berikutnya sesuai urutan §2 |
 | REPORT-01 | Laporan CSV (stock ledger + status order) | Belum | Menyusul setelah DASH-01 |
 
@@ -89,8 +89,9 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 ## Ringkasan status saat ini (2026-09-18)
 
 - **Selesai penuh**: 18 dari 24 item.
-- **Sebagian** (gap eksplisit, sedang/akan dikerjakan): PRD-01, VIEW-01,
-  FIND-01, UI-01 - lihat `docs/quality/tech-debt.md` #5 dan #6, plus item
-  screenshot yang belum tercatat di `docs/testing/`.
+- **Sebagian** (gap eksplisit, sedang/akan dikerjakan): PRD-01 (upload
+  gambar belum), VIEW-01 (screenshot belum), FIND-01 (filter status stok
+  Produk belum - seed 25 order sudah selesai), UI-01 (screenshot belum) -
+  lihat `docs/quality/tech-debt.md` #5.
 - **Belum dikerjakan**: DASH-01, REPORT-01 (giliran berikutnya sesuai
   urutan §2), DESIGN-04 (menunggu assessor, di luar kendali jadwal peserta).
