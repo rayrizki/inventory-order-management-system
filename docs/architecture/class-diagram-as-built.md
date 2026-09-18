@@ -127,7 +127,7 @@ classDiagram
     AuthController --> SessionInterface : constructor injection (interface)
 
     note for User "BEDA dari initial: tidak ada properti\ncreatedAt/updatedAt di Entity (kolomnya\nada di tabel `users`, tapi belum ada\nalur yang butuh baca nilainya di PHP -\nYAGNI, sama alasannya dengan\nUserRepositoryInterface di ADR-0001)"
-    note for UserRepositoryInterface "Sesuai ADR-0001: sengaja BELUM\npunya save()/listPaginated() -\nditunda sampai USR-01 (manajemen\nuser) benar-benar dikerjakan"
+    note for UserRepositoryInterface "Sesuai ADR-0001: awalnya sengaja BELUM\npunya save()/listPaginated(), ditunda sampai\nUSR-01 benar-benar dikerjakan. Method itu\nsudah ditambahkan (save/setActive/listAll/\ncountAll) begitu USR-01 dibangun - lihat\nDiagram H, bukan diagram ini, supaya diagram\nAuth tetap fokus ke alur login."
     note for AuthController "BEDA dari initial: method tidak menerima\nRequest / mengembalikan Response - initial\ndiagram mengasumsikan abstraksi itu, tapi\nkodenya baca $_POST/$_GET langsung dan\npanggil header()/require view langsung.\nBerlaku utk semua Controller di as-built ini,\nbukan cuma AuthController."
 ```
 
@@ -626,6 +626,66 @@ classDiagram
 
 Catatan tambahan (di luar diagram): akses baca (`index()`/`show()`) dan aksi mutasi PO seluruhnya digerbang `requireRole([Admin, WarehouseStaff])` - beda dari Produk yang membuka akses baca ke seluruh role (§1.2 tidak memberi Sales visibilitas apa pun ke Purchase Order). Item sidebar "Purchase Order" disembunyikan dari Sales lewat filter per-item baru di `shell-start.php` (`$navGroups[...]['roles']`) - sebelumnya hanya bisa menyembunyikan satu grup utuh sekaligus.
 
+## Diagram H - Manajemen User (USR-01)
+
+```mermaid
+classDiagram
+    direction LR
+
+    class UserRepositoryInterface {
+        <<interface>>
+        +findById(int id) User?
+        +findByEmail(string email) User?
+        +save(User user) User
+        +setActive(int id, bool isActive) void
+        +listAll(string? search, bool? isActive, int limit, int offset, string sortBy, string sortDir) User[]
+        +countAll(string? search, bool? isActive) int
+    }
+    class MySqlUserRepository {
+        -PDO pdo
+    }
+    class InMemoryUserRepository {
+        -User[] users
+    }
+
+    class UserService {
+        +const PER_PAGE = 10
+        -UserRepositoryInterface users
+        +listUsers(...) User[]
+        +countUsers(...) int
+        +getUserById(int id) User
+        +createUser(array input) User
+        +updateUser(int id, array input) User
+        +setActive(int id, bool isActive) void
+    }
+
+    class UserController {
+        +const ALLOWED_PER_PAGE
+        +const ALLOWED_SORT_COLUMNS
+        +const STATUS_FILTERS
+        +const STATUS_MESSAGES
+        -UserService userService
+        -AuthGuard guard
+        +index() void
+        +showCreateForm() void
+        +create() void
+        +showEditForm(string id) void
+        +update(string id) void
+        +toggleActive(string id) void
+    }
+
+    UserRepositoryInterface <|.. MySqlUserRepository : implements
+    UserRepositoryInterface <|.. InMemoryUserRepository : implements
+    UserService --> UserRepositoryInterface : constructor injection (interface)
+    UserController --> UserService : constructor injection (concrete)
+    UserController --> AuthGuard : constructor injection (concrete)
+    UserService ..> NotFoundException : throws
+    UserService ..> ValidationException : throws
+
+    note for UserService "validate() menolak role Admin secara eksplisit -\nhanya Sales/WarehouseStaff yang bisa dibuat/diubah\nlewat form ini (brief: \"Admin mengelola akun Sales\ndan Warehouse Staff\", disebut dua kali). Password\nwajib saat create, opsional saat update (kosong =\npertahankan hash lama, tidak menimpa dengan hash\nkosong)."
+    note for UserController "Beda dari Produk: index() JUGA di-gate\nrequireRole([Admin]), bukan cuma requireLogin() -\nUSR-01 eksplisit bilang Sales/Warehouse Staff\ntidak boleh membuka halaman administrasi user\nSAMA SEKALI, beda dari Produk yang baca-nya\nterbuka untuk semua role."
+```
+
 ## Apa yang berubah dari initial ke as-built, dan kenapa
 
 1. **`CurrentUser` bertambah properti `name`.** Initial hanya menyiapkan `id`+`role` untuk kebutuhan otorisasi (`requireRole()`); kebutuhan menampilkan *siapa* yang login (bukan cuma perannya) di sidebar baru muncul belakangan, jadi properti ini ditambah begitu use case-nya nyata - bukan diprediksi di awal.
@@ -642,3 +702,4 @@ Catatan tambahan (di luar diagram): akses baca (`index()`/`show()`) dan aksi mut
 12. **`PurchaseOrderController` (Diagram G) menggabungkan tanggung jawab `PurchaseOrderController` DAN `GoodsReceiptController` yang di initial (Diagram 3) digambar terpisah.** Begitu coding dimulai, kedua "controller" itu sama-sama beroperasi di URL `/purchase-orders/{id}` (halaman detail yang sama menampilkan status PO sekaligus form goods receipt) - memisahkannya jadi dua class HTTP controller berarti dua class itu harus saling tahu URL/state satu sama lain tanpa manfaat nyata (initial mengasumsikan pemisahan HTTP-layer yang initial diagram juga tidak punya presedennya di modul lain). Pemisahan tanggung jawab yang sebenarnya penting (validasi vs transaksi) tetap dipertahankan satu tingkat di bawah, di `PurchaseOrderService` vs `GoodsReceiptService` - lihat poin 13.
 13. **`PurchaseOrderService` bertambah TIGA dependency dibanding initial** (initial cuma `ProductRepositoryInterface`; as-built menambah `SupplierRepositoryInterface`+`WarehouseRepositoryInterface`+tetap `ProductRepositoryInterface`, jadi total 4). `createPurchaseOrder()` harus memvalidasi tiga foreign key sekaligus (supplier, gudang tujuan, dan produk per baris item) sesuai VAL-01 - initial belum menunjukkan validasi selengkap ini karena ditulis sebelum bentuk form/tabel PO final.
 14. **`GoodsReceiptService` menerima `PDO` langsung lewat constructor** - satu-satunya Service di seluruh codebase yang melakukannya, tidak digambar di initial sama sekali (initial cuma menulis catatan teks "dibungkus 1 DB transaction" tanpa menunjukkan mekanismenya). Alasan lengkap: ADR-0005.
+15. **`UserRepositoryInterface` (Diagram H) akhirnya mendapat `save()`/`setActive()`/`listAll()`/`countAll()`** - realisasi dari catatan YAGNI di ADR-0001 dan Diagram B ("ditunda sampai USR-01 benar-benar dikerjakan"). `UserService` menolak role `Admin` secara eksplisit di `validate()` - satu-satunya Service Master Data yang membatasi NILAI enum yang boleh dipilih user (bukan cuma format), karena brief secara spesifik membatasi cakupan modul ini ke "Admin mengelola akun Sales dan Warehouse Staff".
