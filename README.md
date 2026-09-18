@@ -17,8 +17,9 @@ Slice yang sudah selesai:
 - **Penanganan error (ERR-01)**: exception tak terduga (bug kode, koneksi database putus) tidak lagi menampilkan stack trace ke user - dicatat ke log server, ditampilkan sebagai 500 generik.
 - **Endpoint JSON API (API-01)**: `GET /api/products/{sku}/availability` - stok per gudang dalam format JSON, autentikasi sama seperti halaman biasa, kode status 200/401/404 yang tepat.
 - **Static analysis (TEST-03)**: PHPStan level 6, 0 error. Lihat `docs/quality/static-analysis.md`.
+- **Script terjadwal (JOB-01)**: `scripts/check-low-stock.php` - ringkasan produk di bawah reorder point, dijalankan manual lewat `docker compose exec app php scripts/check-low-stock.php`.
 
-Slice berikutnya (Sales Order, dashboard/laporan) belum dikerjakan. Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Seed data belum menyertakan Purchase Order/Sales Order (§7.1 minta 25 order gabungan) - ditunda sampai Sales Order selesai supaya variasi statusnya lengkap sekaligus. Lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
+Slice berikutnya (Sales Order) belum dikerjakan. Dashboard (DASH-01) dan Laporan CSV (REPORT-01) sengaja ditunda sampai Sales Order selesai - keduanya butuh data order (ringkasan status SO, order pending) yang baru lengkap setelah modul itu ada, dan brief sendiri menempatkan "Dashboard/Laporan" setelah "Sales Order" di alur inti (§1.1). Upload gambar Produk dan filter status stok low/normal (FIND-01) sengaja ditunda mengikuti urutan pembangunan brief §2 ("alur transaksi inti dulu, baru upload gambar"). Seed data belum menyertakan Purchase Order/Sales Order (§7.1 minta 25 order gabungan) - ditunda sampai Sales Order selesai supaya variasi statusnya lengkap sekaligus. Lihat `docs/quality/tech-debt.md` untuk daftar lengkap keterbatasan yang disadari saat ini, dan `docs/testing/` untuk hasil test tiap slice.
 
 ## Instalasi (Docker)
 
