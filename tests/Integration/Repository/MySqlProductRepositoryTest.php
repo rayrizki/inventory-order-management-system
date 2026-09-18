@@ -38,6 +38,11 @@ final class MySqlProductRepositoryTest extends TestCase
     protected function tearDown(): void
     {
         if ($this->createdId !== null) {
+            // product_stock tidak punya ON DELETE CASCADE ke products (lihat
+            // schema-and-seed.sql) - dihapus dulu di sini (no-op kalau tidak
+            // pernah ada baris stok), baru products, supaya FK tidak gagal
+            // untuk test yang menyisipkan baris stok (mis. sumInventoryValue()).
+            $this->pdo->prepare('DELETE FROM product_stock WHERE product_id = :id')->execute(['id' => $this->createdId]);
             $statement = $this->pdo->prepare('DELETE FROM products WHERE id = :id');
             $statement->execute(['id' => $this->createdId]);
         }
@@ -174,5 +179,30 @@ final class MySqlProductRepositoryTest extends TestCase
         // membuktikan countAll() bekerja).
         self::assertSame(1, $repository->countAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low'));
         self::assertSame(0, $repository->countAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal'));
+    }
+
+    /**
+     * DASH-01. Delta before/after (bukan angka mutlak) karena product_stock
+     * sudah berisi seed nyata (30 produk + 25 order, §7.1).
+     */
+    public function testSumInventoryValueReflectsQuantityTimesBuyPrice(): void
+    {
+        $repository = new MySqlProductRepository($this->pdo);
+        $before = $repository->sumInventoryValue();
+
+        $saved = $repository->save(new Product(null, 'TEST-SKU-ZZZ', 'Test Produk Nilai Inventori ZZZ', $this->categoryId, 'pcs', 10000, 15000, 5, null, true));
+        $this->createdId = $saved->id;
+
+        $warehouseId = (new \App\Repository\MySqlWarehouseRepository($this->pdo))->save(new \App\Entity\Warehouse(null, 'Test Gudang Nilai Inventori ZZZ', null, true))->id;
+        $this->pdo->prepare('INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES (:product_id, :warehouse_id, :quantity)')
+            ->execute(['product_id' => $saved->id, 'warehouse_id' => $warehouseId, 'quantity' => 7]);
+
+        $after = $repository->sumInventoryValue();
+
+        // buy_price 10000 * quantity 7 = 70000.
+        self::assertSame(70000.0, $after - $before);
+
+        $this->pdo->prepare('DELETE FROM product_stock WHERE warehouse_id = :id')->execute(['id' => $warehouseId]);
+        $this->pdo->prepare('DELETE FROM warehouses WHERE id = :id')->execute(['id' => $warehouseId]);
     }
 }

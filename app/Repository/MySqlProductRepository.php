@@ -148,6 +148,17 @@ final class MySqlProductRepository implements ProductRepositoryInterface
         ]);
     }
 
+    public function sumInventoryValue(): float
+    {
+        $statement = $this->pdo->query(
+            'SELECT COALESCE(SUM(ps.quantity * p.buy_price), 0) AS total
+             FROM product_stock ps
+             JOIN products p ON p.id = ps.product_id'
+        );
+
+        return (float) $statement->fetchColumn();
+    }
+
     /**
      * @return array{0: string, 1: string, 2: array<string, mixed>}
      */

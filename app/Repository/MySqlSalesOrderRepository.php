@@ -141,6 +141,33 @@ final class MySqlSalesOrderRepository implements SalesOrderRepositoryInterface
         return (int) $statement->fetchColumn();
     }
 
+    public function countByStatus(?int $createdBy = null): array
+    {
+        $counts = array_fill_keys(array_map(static fn (SalesOrderStatus $s): string => $s->value, SalesOrderStatus::cases()), 0);
+
+        $where = $createdBy !== null ? 'WHERE created_by = :created_by' : '';
+        $statement = $this->pdo->prepare("SELECT status, COUNT(*) AS total FROM sales_orders {$where} GROUP BY status");
+        $statement->execute($createdBy !== null ? ['created_by' => $createdBy] : []);
+        foreach ($statement->fetchAll() as $row) {
+            $counts[(string) $row['status']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
+    public function listForReport(string $fromDate, string $toDate): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, customer_id, warehouse_id, status, created_by, approved_by, created_at
+             FROM sales_orders
+             WHERE DATE(created_at) BETWEEN :from_date AND :to_date
+             ORDER BY created_at ASC, id ASC'
+        );
+        $statement->execute(['from_date' => $fromDate, 'to_date' => $toDate]);
+
+        return array_map(fn (array $row): SalesOrder => $this->hydrate($row, []), $statement->fetchAll());
+    }
+
     /**
      * @return array{0: string, 1: array<string, mixed>}
      */

@@ -20,4 +20,12 @@ interface StockLedgerRepositoryInterface
      * @return StockLedgerEntry[]
      */
     public function findByReference(string $referenceType, int $referenceId): array;
+
+    /**
+     * REPORT-01: seluruh pergerakan stok dalam rentang tanggal, TIDAK
+     * dipaginasi - laporan CSV butuh semua baris.
+     *
+     * @return StockLedgerEntry[]
+     */
+    public function listForReport(string $fromDate, string $toDate): array;
 }

@@ -160,4 +160,36 @@ final class MySqlSalesOrderRepositoryTest extends TestCase
         self::assertNotEmpty($list);
         self::assertSame([], $list[0]->items, 'listAll() tidak boleh memuat item - pakai findById() untuk detail');
     }
+
+    /**
+     * DASH-01. Delta before/after (bukan angka mutlak) karena sales_orders
+     * sudah berisi seed 10 SO (§7.1, tech-debt #6).
+     */
+    public function testCountByStatusIncludesAllStatusesAndScopesToCreatedBy(): void
+    {
+        $repository = new MySqlSalesOrderRepository($this->pdo);
+        $beforeAll = $repository->countByStatus();
+        $beforeOwn = $repository->countByStatus($this->salesUserId);
+
+        $repository->save($this->makeSalesOrder());
+
+        $afterAll = $repository->countByStatus();
+        $afterOwn = $repository->countByStatus($this->salesUserId);
+
+        self::assertArrayHasKey('Cancelled', $afterAll, 'seluruh status harus selalu ada di hasil, termasuk yang kebetulan 0');
+        self::assertSame($beforeAll['Draft'] + 1, $afterAll['Draft']);
+        self::assertSame($beforeOwn['Draft'] + 1, $afterOwn['Draft'], 'countByStatus(createdBy) harus scoping kepemilikan Sales (SS1.2)');
+    }
+
+    public function testListForReportFiltersByCreatedAtDateRange(): void
+    {
+        $repository = new MySqlSalesOrderRepository($this->pdo);
+        $saved = $repository->save($this->makeSalesOrder());
+        $today = date('Y-m-d');
+
+        $rows = $repository->listForReport($today, $today);
+
+        self::assertNotEmpty(array_filter($rows, static fn (SalesOrder $so): bool => $so->id === $saved->id));
+        self::assertSame([], $repository->listForReport('2020-01-01', '2020-01-01'));
+    }
 }

@@ -117,6 +117,16 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
         }
     }
 
+    public function sumInventoryValue(): float
+    {
+        $total = 0.0;
+        foreach ($this->products as $product) {
+            $total += ($this->totalStockByProductId[$product->id] ?? 0) * $product->buyPrice;
+        }
+
+        return $total;
+    }
+
     /**
      * @return Product[]
      */

@@ -142,4 +142,40 @@ final class MySqlPurchaseOrderRepositoryTest extends TestCase
         $byStatus = $repository->listAll(status: PurchaseOrderStatus::Draft);
         self::assertEmpty(array_filter($byStatus, static fn (PurchaseOrder $po): bool => $po->id === $saved->id), 'status sudah Ordered, tidak boleh muncul di filter Draft');
     }
+
+    /**
+     * DASH-01. Dibandingkan sebagai delta before/after (bukan angka mutlak)
+     * karena tabel purchase_orders sudah berisi seed 15 PO (§7.1, tech-debt
+     * #6) - assert angka pasti akan rapuh terhadap perubahan seed di masa
+     * depan.
+     */
+    public function testCountByStatusIncludesAllStatusesAndReflectsNewRow(): void
+    {
+        $repository = new MySqlPurchaseOrderRepository($this->pdo);
+        $before = $repository->countByStatus();
+
+        $repository->save($this->makePurchaseOrder());
+
+        $after = $repository->countByStatus();
+
+        self::assertArrayHasKey('Cancelled', $after, 'seluruh status harus selalu ada di hasil, termasuk yang kebetulan 0');
+        self::assertSame($before['Draft'] + 1, $after['Draft']);
+    }
+
+    public function testListForReportFiltersByOrderDateRange(): void
+    {
+        $repository = new MySqlPurchaseOrderRepository($this->pdo);
+        // makePurchaseOrder() default order_date 2026-09-17 - di luar
+        // rentang seed 25-order (2026-08-01 s.d. 2026-09-16), jadi baris
+        // ini dijamin satu-satunya yang cocok filter tanggal di bawah.
+        $saved = $repository->save($this->makePurchaseOrder());
+
+        $rows = $repository->listForReport('2026-09-17', '2026-09-17');
+
+        self::assertCount(1, $rows);
+        self::assertSame($saved->id, $rows[0]->id);
+        self::assertSame([], $rows[0]->items, 'listForReport() cuma header, konsisten dengan listAll()');
+
+        self::assertSame([], $repository->listForReport('2020-01-01', '2020-01-01'));
+    }
 }

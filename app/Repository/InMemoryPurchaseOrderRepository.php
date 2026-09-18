@@ -97,6 +97,24 @@ final class InMemoryPurchaseOrderRepository implements PurchaseOrderRepositoryIn
         return count($this->filtered($search, $status));
     }
 
+    public function countByStatus(): array
+    {
+        $counts = array_fill_keys(array_map(static fn (PurchaseOrderStatus $s): string => $s->value, PurchaseOrderStatus::cases()), 0);
+        foreach ($this->purchaseOrders as $po) {
+            $counts[$po->status->value]++;
+        }
+
+        return $counts;
+    }
+
+    public function listForReport(string $fromDate, string $toDate): array
+    {
+        return array_values(array_filter(
+            $this->purchaseOrders,
+            static fn (PurchaseOrder $po): bool => $po->orderDate >= $fromDate && $po->orderDate <= $toDate,
+        ));
+    }
+
     /**
      * @return PurchaseOrder[]
      */

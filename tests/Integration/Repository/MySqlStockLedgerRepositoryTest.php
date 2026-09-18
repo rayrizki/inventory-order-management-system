@@ -73,4 +73,25 @@ final class MySqlStockLedgerRepositoryTest extends TestCase
         self::assertSame(3, $entries[1]->quantity);
         self::assertNotNull($entries[0]->createdAt);
     }
+
+    public function testListForReportFiltersByDateRange(): void
+    {
+        $repository = new MySqlStockLedgerRepository($this->pdo);
+        $inRange = $repository->record(new StockLedgerEntry(null, $this->productId, $this->warehouseId, StockMovementType::Receipt, 7, 'purchase_order', 111, 1, null));
+        $outOfRange = $repository->record(new StockLedgerEntry(null, $this->productId, $this->warehouseId, StockMovementType::Issue, 2, 'sales_order', 222, 1, null));
+
+        // record() tidak bisa set created_at manual (DB default
+        // CURRENT_TIMESTAMP) - diubah paksa lewat UPDATE langsung supaya
+        // filter tanggal benar-benar teruji, bukan cuma kebetulan lolos
+        // karena keduanya dibuat "sekarang".
+        $this->pdo->prepare('UPDATE stock_ledger SET created_at = :created_at WHERE id = :id')
+            ->execute(['created_at' => '2026-09-05 10:00:00', 'id' => $inRange->id]);
+        $this->pdo->prepare('UPDATE stock_ledger SET created_at = :created_at WHERE id = :id')
+            ->execute(['created_at' => '2020-01-01 10:00:00', 'id' => $outOfRange->id]);
+
+        $rows = $repository->listForReport('2026-09-01', '2026-09-10');
+
+        self::assertCount(1, $rows);
+        self::assertSame($inRange->id, $rows[0]->id);
+    }
 }

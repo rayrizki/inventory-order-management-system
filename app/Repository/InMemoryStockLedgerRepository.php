@@ -46,4 +46,12 @@ final class InMemoryStockLedgerRepository implements StockLedgerRepositoryInterf
             static fn (StockLedgerEntry $entry): bool => $entry->referenceType === $referenceType && $entry->referenceId === $referenceId,
         ));
     }
+
+    public function listForReport(string $fromDate, string $toDate): array
+    {
+        return array_values(array_filter(
+            $this->entries,
+            static fn (StockLedgerEntry $entry): bool => substr((string) $entry->createdAt, 0, 10) >= $fromDate && substr((string) $entry->createdAt, 0, 10) <= $toDate,
+        ));
+    }
 }

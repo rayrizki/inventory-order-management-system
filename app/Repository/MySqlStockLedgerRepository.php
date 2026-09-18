@@ -55,6 +55,19 @@ final class MySqlStockLedgerRepository implements StockLedgerRepositoryInterface
         return array_map($this->hydrate(...), $statement->fetchAll());
     }
 
+    public function listForReport(string $fromDate, string $toDate): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at
+             FROM stock_ledger
+             WHERE DATE(created_at) BETWEEN :from_date AND :to_date
+             ORDER BY created_at ASC, id ASC'
+        );
+        $statement->execute(['from_date' => $fromDate, 'to_date' => $toDate]);
+
+        return array_map($this->hydrate(...), $statement->fetchAll());
+    }
+
     /**
      * @param array<string, mixed> $row
      */

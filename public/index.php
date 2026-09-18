@@ -12,6 +12,7 @@ use App\Controller\DashboardController;
 use App\Controller\ProductAvailabilityApiController;
 use App\Controller\ProductController;
 use App\Controller\PurchaseOrderController;
+use App\Controller\ReportController;
 use App\Controller\SalesOrderController;
 use App\Controller\SupplierController;
 use App\Controller\UserController;
@@ -33,10 +34,12 @@ use App\Repository\MySqlWarehouseRepository;
 use App\Service\AuthService;
 use App\Service\CategoryService;
 use App\Service\CustomerService;
+use App\Service\DashboardService;
 use App\Service\GoodsIssueService;
 use App\Service\GoodsReceiptService;
 use App\Service\ProductService;
 use App\Service\PurchaseOrderService;
+use App\Service\ReportService;
 use App\Service\SalesOrderService;
 use App\Service\StockService;
 use App\Service\SupplierService;
@@ -89,8 +92,6 @@ $authController = new AuthController($authService, $session);
 $userService = new UserService($userRepository);
 $userController = new UserController($userService, $authGuard);
 
-$dashboardController = new DashboardController($authGuard);
-
 $categoryRepository = new MySqlCategoryRepository($pdo);
 $categoryService = new CategoryService($categoryRepository);
 $categoryController = new CategoryController($categoryService, $authGuard);
@@ -124,6 +125,12 @@ $salesOrderRepository = new MySqlSalesOrderRepository($pdo);
 $salesOrderService = new SalesOrderService($salesOrderRepository, $customerRepository, $warehouseRepository, $productRepository);
 $goodsIssueService = new GoodsIssueService($salesOrderRepository, $productStockRepository, $stockLedgerRepository, $pdo);
 $salesOrderController = new SalesOrderController($salesOrderService, $goodsIssueService, $customerService, $warehouseService, $productService, $authGuard);
+
+$dashboardService = new DashboardService($productRepository, $purchaseOrderRepository, $salesOrderRepository);
+$dashboardController = new DashboardController($dashboardService, $authGuard);
+
+$reportService = new ReportService($stockLedgerRepository, $purchaseOrderRepository, $salesOrderRepository, $productRepository, $warehouseRepository, $supplierRepository, $customerRepository, $userRepository);
+$reportController = new ReportController($reportService, $authGuard);
 
 $router = new Router(new CsrfToken($session));
 
@@ -185,6 +192,10 @@ $router->post('/sales-orders/{id}/submit-for-approval', [$salesOrderController, 
 $router->post('/sales-orders/{id}/approve', [$salesOrderController, 'approve']);
 $router->post('/sales-orders/{id}/cancel', [$salesOrderController, 'cancel']);
 $router->post('/sales-orders/{id}/issue', [$salesOrderController, 'processGoodsIssue']);
+
+$router->get('/reports', [$reportController, 'index']);
+$router->get('/reports/stock-ledger.csv', [$reportController, 'exportStockLedgerCsv']);
+$router->get('/reports/orders.csv', [$reportController, 'exportOrdersCsv']);
 
 $router->get('/users', [$userController, 'index']);
 $router->get('/users/create', [$userController, 'showCreateForm']);

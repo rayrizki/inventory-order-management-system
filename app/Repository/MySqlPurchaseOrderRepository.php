@@ -138,6 +138,31 @@ final class MySqlPurchaseOrderRepository implements PurchaseOrderRepositoryInter
         return (int) $statement->fetchColumn();
     }
 
+    public function countByStatus(): array
+    {
+        $counts = array_fill_keys(array_map(static fn (PurchaseOrderStatus $s): string => $s->value, PurchaseOrderStatus::cases()), 0);
+
+        $statement = $this->pdo->query('SELECT status, COUNT(*) AS total FROM purchase_orders GROUP BY status');
+        foreach ($statement->fetchAll() as $row) {
+            $counts[(string) $row['status']] = (int) $row['total'];
+        }
+
+        return $counts;
+    }
+
+    public function listForReport(string $fromDate, string $toDate): array
+    {
+        $statement = $this->pdo->prepare(
+            'SELECT id, supplier_id, warehouse_id, status, order_date, created_by
+             FROM purchase_orders
+             WHERE order_date BETWEEN :from_date AND :to_date
+             ORDER BY order_date ASC, id ASC'
+        );
+        $statement->execute(['from_date' => $fromDate, 'to_date' => $toDate]);
+
+        return array_map(fn (array $row): PurchaseOrder => $this->hydrate($row, []), $statement->fetchAll());
+    }
+
     /**
      * @return array{0: string, 1: array<string, mixed>}
      */

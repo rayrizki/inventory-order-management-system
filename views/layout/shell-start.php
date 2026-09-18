@@ -46,7 +46,7 @@ $navGroups = [
         'sales-orders' => ['label' => 'Sales Order', 'href' => '/sales-orders'],
     ],
     'Laporan' => [
-        'reports' => ['label' => 'Laporan', 'href' => '/reports'],
+        'reports' => ['label' => 'Laporan', 'href' => '/reports', 'roles' => [\App\Entity\Role::Admin]],
     ],
     'Administrasi' => [
         'users' => ['label' => 'User', 'href' => '/users'],

@@ -91,6 +91,27 @@ final class InMemorySalesOrderRepository implements SalesOrderRepositoryInterfac
         return count($this->filtered($search, $status, $createdBy));
     }
 
+    public function countByStatus(?int $createdBy = null): array
+    {
+        $counts = array_fill_keys(array_map(static fn (SalesOrderStatus $s): string => $s->value, SalesOrderStatus::cases()), 0);
+        foreach ($this->salesOrders as $so) {
+            if ($createdBy !== null && $so->createdBy !== $createdBy) {
+                continue;
+            }
+            $counts[$so->status->value]++;
+        }
+
+        return $counts;
+    }
+
+    public function listForReport(string $fromDate, string $toDate): array
+    {
+        return array_values(array_filter(
+            $this->salesOrders,
+            static fn (SalesOrder $so): bool => substr((string) $so->createdAt, 0, 10) >= $fromDate && substr((string) $so->createdAt, 0, 10) <= $toDate,
+        ));
+    }
+
     /**
      * @return SalesOrder[]
      */
