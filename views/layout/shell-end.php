@@ -26,5 +26,6 @@
     <script src="/assets/js/modal-form.js" defer></script>
     <script src="/assets/js/confirm-dialog.js" defer></script>
     <script src="/assets/js/purchase-order-form.js" defer></script>
+    <script src="/assets/js/sales-order-form.js" defer></script>
 </body>
 </html>

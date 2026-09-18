@@ -35,4 +35,21 @@ final class InMemoryProductStockRepository implements ProductStockRepositoryInte
 
         $this->rows[] = new ProductStock($productId, $warehouseId, $delta);
     }
+
+    public function decrementIfSufficient(int $productId, int $warehouseId, int $qty): bool
+    {
+        foreach ($this->rows as $index => $row) {
+            if ($row->productId === $productId && $row->warehouseId === $warehouseId) {
+                if ($row->quantity < $qty) {
+                    return false;
+                }
+
+                $this->rows[$index] = new ProductStock($productId, $warehouseId, $row->quantity - $qty);
+
+                return true;
+            }
+        }
+
+        return false;
+    }
 }

@@ -37,6 +37,27 @@ final class MySqlProductStockRepository implements ProductStockRepositoryInterfa
         ]);
     }
 
+    public function decrementIfSufficient(int $productId, int $warehouseId, int $qty): bool
+    {
+        // WHERE quantity >= :qty membuat UPDATE ini atomik terhadap request
+        // konkuren lain yang menyentuh baris yang sama - InnoDB mengunci
+        // baris ini sepanjang transaksi berjalan, jadi dua goods issue untuk
+        // produk+gudang yang sama tidak bisa dua-duanya lolos men-decrement
+        // dari sisa stok yang sama (lihat ADR-0005 pola serupa untuk PO,
+        // ADR baru untuk mekanisme oversell-prevention SO-01).
+        $statement = $this->pdo->prepare(
+            'UPDATE product_stock SET quantity = quantity - :qty WHERE product_id = :product_id AND warehouse_id = :warehouse_id AND quantity >= :qty_check'
+        );
+        $statement->execute([
+            'qty' => $qty,
+            'product_id' => $productId,
+            'warehouse_id' => $warehouseId,
+            'qty_check' => $qty,
+        ]);
+
+        return $statement->rowCount() > 0;
+    }
+
     /**
      * @param array<string, mixed> $row
      */

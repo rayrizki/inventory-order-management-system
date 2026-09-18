@@ -12,6 +12,7 @@ use App\Controller\DashboardController;
 use App\Controller\ProductAvailabilityApiController;
 use App\Controller\ProductController;
 use App\Controller\PurchaseOrderController;
+use App\Controller\SalesOrderController;
 use App\Controller\SupplierController;
 use App\Controller\UserController;
 use App\Controller\WarehouseController;
@@ -24,6 +25,7 @@ use App\Repository\MySqlCustomerRepository;
 use App\Repository\MySqlProductRepository;
 use App\Repository\MySqlProductStockRepository;
 use App\Repository\MySqlPurchaseOrderRepository;
+use App\Repository\MySqlSalesOrderRepository;
 use App\Repository\MySqlStockLedgerRepository;
 use App\Repository\MySqlSupplierRepository;
 use App\Repository\MySqlUserRepository;
@@ -31,9 +33,11 @@ use App\Repository\MySqlWarehouseRepository;
 use App\Service\AuthService;
 use App\Service\CategoryService;
 use App\Service\CustomerService;
+use App\Service\GoodsIssueService;
 use App\Service\GoodsReceiptService;
 use App\Service\ProductService;
 use App\Service\PurchaseOrderService;
+use App\Service\SalesOrderService;
 use App\Service\StockService;
 use App\Service\SupplierService;
 use App\Service\UserService;
@@ -116,6 +120,11 @@ $stockLedgerRepository = new MySqlStockLedgerRepository($pdo);
 $goodsReceiptService = new GoodsReceiptService($purchaseOrderRepository, $productStockRepository, $stockLedgerRepository, $pdo);
 $purchaseOrderController = new PurchaseOrderController($purchaseOrderService, $goodsReceiptService, $supplierService, $warehouseService, $productService, $authGuard);
 
+$salesOrderRepository = new MySqlSalesOrderRepository($pdo);
+$salesOrderService = new SalesOrderService($salesOrderRepository, $customerRepository, $warehouseRepository, $productRepository);
+$goodsIssueService = new GoodsIssueService($salesOrderRepository, $productStockRepository, $stockLedgerRepository, $pdo);
+$salesOrderController = new SalesOrderController($salesOrderService, $goodsIssueService, $customerService, $warehouseService, $productService, $authGuard);
+
 $router = new Router(new CsrfToken($session));
 
 $router->get('/login', [$authController, 'showLoginForm']);
@@ -167,6 +176,15 @@ $router->get('/purchase-orders/{id}', [$purchaseOrderController, 'show']);
 $router->post('/purchase-orders/{id}/mark-ordered', [$purchaseOrderController, 'markOrdered']);
 $router->post('/purchase-orders/{id}/cancel', [$purchaseOrderController, 'cancel']);
 $router->post('/purchase-orders/{id}/receive', [$purchaseOrderController, 'receiveGoods']);
+
+$router->get('/sales-orders', [$salesOrderController, 'index']);
+$router->get('/sales-orders/create', [$salesOrderController, 'showCreateForm']);
+$router->post('/sales-orders', [$salesOrderController, 'create']);
+$router->get('/sales-orders/{id}', [$salesOrderController, 'show']);
+$router->post('/sales-orders/{id}/submit-for-approval', [$salesOrderController, 'submitForApproval']);
+$router->post('/sales-orders/{id}/approve', [$salesOrderController, 'approve']);
+$router->post('/sales-orders/{id}/cancel', [$salesOrderController, 'cancel']);
+$router->post('/sales-orders/{id}/issue', [$salesOrderController, 'processGoodsIssue']);
 
 $router->get('/users', [$userController, 'index']);
 $router->get('/users/create', [$userController, 'showCreateForm']);
