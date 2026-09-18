@@ -814,6 +814,79 @@ classDiagram
 
 Catatan tambahan (di luar diagram): item sidebar "Sales Order" SENGAJA tidak diberi filter `roles` seperti "Purchase Order" - ketiga role (Admin, Sales, Warehouse Staff) butuh visibilitas modul ini (Admin penuh, Sales untuk order miliknya, Warehouse Staff untuk melihat SO Approved yang perlu diproses goods issue-nya) - pembatasan sesungguhnya terjadi di dalam `index()` (scoping `createdBy` untuk Sales) dan di tiap aksi mutasi, bukan di level visibilitas menu.
 
+## Diagram J - Dashboard & Laporan (DASH-01, REPORT-01)
+
+```mermaid
+classDiagram
+    direction LR
+
+    class DashboardService {
+        -ProductRepositoryInterface products
+        -PurchaseOrderRepositoryInterface purchaseOrders
+        -SalesOrderRepositoryInterface salesOrders
+        +getAdminSummary() array
+        +getSalesSummary(int salesUserId) array
+        +getWarehouseSummary() array
+    }
+
+    class ReportService {
+        -StockLedgerRepositoryInterface ledger
+        -PurchaseOrderRepositoryInterface purchaseOrders
+        -SalesOrderRepositoryInterface salesOrders
+        -ProductRepositoryInterface products
+        -WarehouseRepositoryInterface warehouses
+        -SupplierRepositoryInterface suppliers
+        -CustomerRepositoryInterface customers
+        -UserRepositoryInterface users
+        +getStockLedgerReport(string from, string to) array
+        +getOrdersReport(string from, string to) array
+    }
+
+    class DashboardController {
+        -DashboardService dashboardService
+        -AuthGuard guard
+        +index() void
+    }
+
+    class ReportController {
+        +const DEFAULT_RANGE_DAYS = 30
+        -ReportService reportService
+        -AuthGuard guard
+        +index() void
+        +exportStockLedgerCsv() void
+        +exportOrdersCsv() void
+    }
+
+    DashboardService --> ProductRepositoryInterface : constructor injection (interface)
+    DashboardService --> PurchaseOrderRepositoryInterface : constructor injection (interface)
+    DashboardService --> SalesOrderRepositoryInterface : constructor injection (interface)
+
+    ReportService --> StockLedgerRepositoryInterface : constructor injection (interface)
+    ReportService --> PurchaseOrderRepositoryInterface : constructor injection (interface)
+    ReportService --> SalesOrderRepositoryInterface : constructor injection (interface)
+    ReportService --> ProductRepositoryInterface : constructor injection (interface)
+    ReportService --> WarehouseRepositoryInterface : constructor injection (interface)
+    ReportService --> SupplierRepositoryInterface : constructor injection (interface)
+    ReportService --> CustomerRepositoryInterface : constructor injection (interface)
+    ReportService --> UserRepositoryInterface : constructor injection (interface)
+
+    DashboardController --> DashboardService : constructor injection (concrete)
+    DashboardController --> AuthGuard : constructor injection (concrete)
+    ReportController --> ReportService : constructor injection (concrete)
+    ReportController --> AuthGuard : constructor injection (concrete)
+
+    note for DashboardService "Satu Service, tiga bentuk ringkasan berbeda per\nrole (bukan tiga Service terpisah) - ketiganya\ncuma menyusun ulang hasil countByStatus()/\nsumInventoryValue() yang sama dengan sudut\npandang berbeda. Otorisasi (role mana lihat\nringkasan mana) tetap di Controller lewat match\n(CurrentUser->role), bukan di sini - konsisten\ndengan SalesOrderService yang juga tidak tahu\napa-apa soal otorisasi."
+    note for ReportService "REPORT-01 eksplisit: 'dihasilkan dari query\nagregasi/rekap yang sama dengan dashboard' -\ndipenuhi dengan memakai method repository YANG\nSAMA (countByStatus, listForReport) yang juga\ndipakai DashboardService, bukan query mentah\nterpisah yang bisa menyimpang. Delapan\ndependency (rekor terbanyak di codebase ini) -\nmencerminkan kebutuhan nyata: dua laporan\nmasing-masing butuh data dari 3-4 tabel referensi\nsekaligus untuk memperkaya baris CSV dengan nama\n(bukan cuma id mentah)."
+    note for ReportController "Satu-satunya Controller yang tidak pernah\nme-render halaman HTML biasa di dua dari tiga\naction-nya - exportStockLedgerCsv()/\nexportOrdersCsv() menulis langsung ke\nphp://output dengan header Content-Type: text/csv,\nbukan lewat views/. Cuma Admin yang boleh akses\nketiganya (brief SS1.2, baris 'Mengunduh laporan\n(CSV)' cuma tercentang di kolom Admin)."
+```
+
+Method baru di repository yang sudah ada (tidak digambar ulang sebagai kelas terpisah - lihat Diagram F/G/I untuk `ProductRepositoryInterface`/`PurchaseOrderRepositoryInterface`/`SalesOrderRepositoryInterface`/`StockLedgerRepositoryInterface` lengkap):
+
+- `ProductRepositoryInterface::sumInventoryValue(): float` - `SUM(quantity * buy_price)` lintas seluruh `product_stock`, di-JOIN ke `products` untuk harga beli.
+- `PurchaseOrderRepositoryInterface::countByStatus(): array` dan `::listForReport(from, to): array` - dipakai DASH-01 dan REPORT-01 secara bersamaan (satu-satunya cara keduanya dijamin tidak menyimpang satu sama lain).
+- `SalesOrderRepositoryInterface::countByStatus(?createdBy): array` dan `::listForReport(from, to): array` - `createdBy` mengaktifkan scoping kepemilikan Sales pada ringkasan dashboard-nya sendiri.
+- `StockLedgerRepositoryInterface::listForReport(from, to): array` - satu-satunya method baca selain `findByReference()` pada interface append-only ini.
+
 ## Apa yang berubah dari initial ke as-built, dan kenapa
 
 1. **`CurrentUser` bertambah properti `name`.** Initial hanya menyiapkan `id`+`role` untuk kebutuhan otorisasi (`requireRole()`); kebutuhan menampilkan *siapa* yang login (bukan cuma perannya) di sidebar baru muncul belakangan, jadi properti ini ditambah begitu use case-nya nyata - bukan diprediksi di awal.
@@ -833,3 +906,5 @@ Catatan tambahan (di luar diagram): item sidebar "Sales Order" SENGAJA tidak dib
 15. **`UserRepositoryInterface` (Diagram H) akhirnya mendapat `save()`/`setActive()`/`listAll()`/`countAll()`** - realisasi dari catatan YAGNI di ADR-0001 dan Diagram B ("ditunda sampai USR-01 benar-benar dikerjakan"). `UserService` menolak role `Admin` secara eksplisit di `validate()` - satu-satunya Service Master Data yang membatasi NILAI enum yang boleh dipilih user (bukan cuma format), karena brief secara spesifik membatasi cakupan modul ini ke "Admin mengelola akun Sales dan Warehouse Staff".
 16. **`ProductStockRepositoryInterface` (Diagram F/G) bertambah `decrementIfSufficient()`** setelah SO-01 (Diagram I) dikerjakan - tidak digambar di initial maupun draf as-built PO-01 karena kebutuhan mengurangi stok (dengan guard oversell) baru nyata begitu goods issue dibangun; `incrementQuantity()` (dipakai goods receipt) tidak butuh guard serupa karena penambahan stok tidak pernah berisiko jadi negatif. Lihat ADR-0006 untuk mekanisme atomiknya.
 17. **`SalesOrderController` (Diagram I) TIDAK mengulang pola `PurchaseOrderController` yang menggabungkan role-gating dengan ownership check secara seragam** - initial (Diagram 3) menyamaratakan "Sales Order" sebagai modul yang cukup di-gate lewat `requireRole()` seperti Purchase Order. Begitu §1.2 dibaca ulang saat coding (Sales boleh membuat/mengajukan/membatalkan order **miliknya sendiri** tapi TIDAK PERNAH boleh approve, termasuk order sendiri), jadi jelas satu role gate saja tidak cukup - beberapa aksi (submitForApproval, cancel) butuh role gate DAN perbandingan `createdBy` eksplisit, sementara approve() cukup role gate saja (Sales tidak pernah lolos ke situ). Ini alasan `SalesOrderController` jadi Controller paling banyak percabangan otorisasi di codebase ini.
+18. **`DashboardService`/`ReportService` (Diagram J) bergantung LANGSUNG ke Repository interface, bukan ke Service lain** (`ProductService`/`PurchaseOrderService`/`SalesOrderService`) - initial (Diagram 3) belum menggambar modul ini sama sekali karena DASH-01/REPORT-01 sengaja ditunda ke akhir alur vertical slice (§2). Begitu benar-benar dikerjakan, polanya mengikuti `GoodsIssueService`/`GoodsReceiptService` (akses repository langsung untuk kebutuhan agregasi lintas-tabel), bukan pola Controller-ke-Service-bisnis biasa - agregasi baca murni (COUNT/SUM/GROUP BY) tidak butuh business rule tambahan yang dijaga Service lain (validasi, transisi status), jadi memaksakan lapisan Service perantara di sini cuma menambah indirection tanpa manfaat nyata.
+19. **`ReportService` (8 dependency constructor, rekor terbanyak) tidak pernah muncul di initial** - REPORT-01 di initial cuma dicatat sebagai requirement teks, mekanismenya belum didesain. Jumlah dependency yang besar bukan tanda pelanggaran SRP (tanggung jawabnya tetap satu: "menyusun baris laporan siap-ekspor") melainkan cerminan kebutuhan nyata memperkaya baris CSV dengan nama (produk/gudang/supplier/customer/user), bukan id mentah - pola yang sama dengan alasan `PurchaseOrderService` (Diagram G) punya 4 dependency.

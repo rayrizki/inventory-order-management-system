@@ -43,8 +43,8 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 |---|---|---|---|
 | VIEW-01 | List, detail, empty state | **Sebagian** | Empty state & detail page fungsional di semua modul (diverifikasi Playwright/curl per slice); **belum ada file screenshot tersimpan** sebagai bukti eksplisit yang diminta brief |
 | FIND-01 | Search/filter/sort/pagination + seed 30 produk & 25 order | Selesai | Search/filter/sort/pagination selesai untuk Produk, PO, SO termasuk filter status stok low/normal (tech-debt #5); seed 25 order gabungan PO+SO selesai (tech-debt #6, `docs/testing/seed-data-verification.md`) - PO kini teruji 2 halaman pagination dengan data nyata |
-| DASH-01 | Dashboard per role dari query agregasi | Belum | Giliran berikutnya sesuai urutan §2 |
-| REPORT-01 | Laporan CSV (stock ledger + status order) | Belum | Menyusul setelah DASH-01 |
+| DASH-01 | Dashboard per role dari query agregasi | Selesai | `docs/testing/dashboard-report-slice.md` - nilai inventori/low-stock/PO+SO per status (Admin), SO milik sendiri per status (Sales), antrean goods receipt/issue + low-stock (Warehouse Staff) |
+| REPORT-01 | Laporan CSV (stock ledger + status order) | Selesai | `docs/testing/dashboard-report-slice.md` - dua CSV (pergerakan stok, status order gabungan PO+SO), Admin-only, diverifikasi dengan 2 rentang tanggal berbeda |
 
 ## 2.6 API
 
@@ -82,15 +82,18 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
-| TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 163 test total, jauh dari 6 minimum, mencakup lebih dari 3 area logic |
+| TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 181 test total, jauh dari 6 minimum, mencakup lebih dari 3 area logic |
 | TEST-02 | Integration test MySQL (min 3) | Selesai (melebihi minimum) | Termasuk bukti eksplisit oversell-prevention SO-01 |
 | TEST-03 | Static analysis (PHPStan level 5+) | Selesai | PHPStan level 6, 0 error - `docs/quality/static-analysis.md` |
 
 ## Ringkasan status saat ini (2026-09-18)
 
-- **Selesai penuh**: 20 dari 24 item.
-- **Sebagian** (gap eksplisit, sedang/akan dikerjakan): VIEW-01 (screenshot
-  belum), UI-01 (screenshot belum) - keduanya butuh evidence visual, bukan
-  fungsionalitas yang belum jalan.
-- **Belum dikerjakan**: DASH-01, REPORT-01 (giliran berikutnya sesuai
-  urutan §2), DESIGN-04 (menunggu assessor, di luar kendali jadwal peserta).
+- **Selesai penuh**: 22 dari 24 item - seluruh alur inti brief §1.1
+  ("Login -> Master Data -> Purchase Order -> Sales Order -> Stock Ledger
+  -> Dashboard/Laporan -> Logout") sudah dibangun dan berfungsi.
+- **Sebagian** (gap eksplisit, evidence visual belum dikumpulkan - bukan
+  fungsionalitas yang belum jalan): VIEW-01, UI-01 (keduanya butuh
+  screenshot; akan dikumpulkan dalam satu ronde verifikasi visual
+  menyeluruh sebelum release final).
+- **Belum dikerjakan**: DESIGN-04 (menunggu assessor memberi cuplikan kode
+  saat defense, di luar kendali jadwal peserta).
