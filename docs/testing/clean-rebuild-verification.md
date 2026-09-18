@@ -49,3 +49,28 @@ Verifikasi ini sebaiknya diulang lagi sekali lagi tepat sebelum release/tag
 final (§10 checklist: "Aplikasi dan database dapat dijalankan lewat Docker
 dari folder bersih"), khususnya setelah seed 25 order gabungan (tech-debt
 #6) ditambahkan.
+
+## Update 2026-09-18 (setelah DASH-01/REPORT-01): retry sekali karena timing
+
+Diulang lagi setelah Dashboard & Laporan CSV selesai (schema tidak berubah
+di slice ini, tapi seed sudah bertambah besar - 25 order + ledger). Rebuild
+sukses; **percobaan pertama** `vendor/bin/phpunit` gagal 55 test dengan
+`PDOException: SQLSTATE[HY000] [2002] Connection refused` - bukan bug kode
+(tidak ada perubahan schema/koneksi di slice ini), melainkan kondisi balapan
+murni container: `db` sempat dilaporkan `healthy` oleh healthcheck
+(`mysqladmin ping`) sesaat SEBELUM script `docker-entrypoint-initdb.d`
+(seed 25-order yang sekarang jauh lebih besar dari seed awal) benar-benar
+selesai dieksekusi - `mysqladmin ping` cuma memastikan daemon MySQL merespons,
+bukan bahwa `docker-entrypoint-initdb.d` sudah selesai. Diulang ~5 detik
+kemudian (tanpa perubahan apa pun) - **181/181 lulus normal**. Row count
+PO/SO/ledger dikonfirmasi tetap benar (15/10/10) setelah retry.
+
+**Implikasi untuk demo/defense**: kalau `docker compose up --build -d` baru
+saja selesai dan test/curl pertama gagal dengan "Connection refused", tunggu
+beberapa detik lalu ulangi - ini bukan kegagalan aplikasi, murni waktu init
+seed yang sekarang lebih besar (25 order + 60 baris stok) belum rampung saat
+container `app` pertama kali mencoba connect. Tidak ditindaklanjuti sebagai
+perbaikan kode (mis. retry-loop di `createPdoConnection()`) karena ini murni
+karakteristik startup Docker sekali pakai, bukan kondisi yang terjadi lagi
+selama aplikasi berjalan normal - brief §4.3 juga tidak mewajibkan resiliensi
+startup se-detail itu ("di luar scope").
