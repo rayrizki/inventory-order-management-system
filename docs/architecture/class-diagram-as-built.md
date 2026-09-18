@@ -469,6 +469,8 @@ classDiagram
 
 Catatan tambahan (di luar diagram): brief §2 eksplisit meminta upload gambar (`imagePath`) dan filter status stok (FIND-01) ditunda sampai "alur transaksi inti stabil" - `Product.imagePath` sudah ada di entity/schema tapi belum ada jalur upload/validasi file, dan `ProductController::index()` belum punya filter `status_stok`. Dicatat sebagai keterbatasan disengaja di `docs/quality/tech-debt.md` #5, bukan celah yang terlewat.
 
+**`ProductAvailabilityApiController` (API-01, ditambahkan 2026-09-18)** - persis seperti dirancang di `docs/planning/class-diagram-initial.md` Diagram 3: controller JSON terpisah (`GET /api/products/{sku}/availability`), constructor injection `ProductService` + `StockService` (dua-duanya konkret, sama seperti Controller HTML lain) + `AuthGuard`. Method `availability(string sku)`: `ProductService::getProductBySku()` (method baru, resolve SKU dari URL, lempar `NotFoundException` kalau tidak ada) lalu `StockService::getStockSummary()` yang SAMA dipakai halaman HTML `products/show.php` - membuktikan alur JSON dan HTML berbagi business logic, bukan implementasi paralel yang bisa berbeda hasilnya. Autentikasi tetap lewat `AuthGuard::requireLogin()` yang sama; yang beda cuma format response error-nya (401/403/404/500 JSON, bukan redirect/halaman HTML) - dicek lewat satu prefix check (`str_starts_with($path, '/api/')`) di `public/index.php`, bukan logic terpisah di tiap Controller.
+
 ## Diagram G - Purchase Order & Goods Receipt (PO-01, ARCH-02)
 
 ```mermaid
