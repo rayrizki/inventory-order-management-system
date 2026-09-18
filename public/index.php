@@ -12,6 +12,7 @@ use App\Controller\DashboardController;
 use App\Controller\ProductController;
 use App\Controller\PurchaseOrderController;
 use App\Controller\SupplierController;
+use App\Controller\UserController;
 use App\Controller\WarehouseController;
 use App\Exception\ForbiddenException;
 use App\Exception\NotFoundException;
@@ -34,6 +35,7 @@ use App\Service\ProductService;
 use App\Service\PurchaseOrderService;
 use App\Service\StockService;
 use App\Service\SupplierService;
+use App\Service\UserService;
 use App\Service\WarehouseService;
 use App\Session\AuthGuard;
 use App\Session\CsrfToken;
@@ -79,6 +81,8 @@ $authGuard = new AuthGuard($session);
 $userRepository = new MySqlUserRepository($pdo);
 $authService = new AuthService($userRepository);
 $authController = new AuthController($authService, $session);
+$userService = new UserService($userRepository);
+$userController = new UserController($userService, $authGuard);
 
 $dashboardController = new DashboardController($authGuard);
 
@@ -161,6 +165,13 @@ $router->get('/purchase-orders/{id}', [$purchaseOrderController, 'show']);
 $router->post('/purchase-orders/{id}/mark-ordered', [$purchaseOrderController, 'markOrdered']);
 $router->post('/purchase-orders/{id}/cancel', [$purchaseOrderController, 'cancel']);
 $router->post('/purchase-orders/{id}/receive', [$purchaseOrderController, 'receiveGoods']);
+
+$router->get('/users', [$userController, 'index']);
+$router->get('/users/create', [$userController, 'showCreateForm']);
+$router->post('/users', [$userController, 'create']);
+$router->get('/users/{id}/edit', [$userController, 'showEditForm']);
+$router->post('/users/{id}', [$userController, 'update']);
+$router->post('/users/{id}/toggle-active', [$userController, 'toggleActive']);
 
 try {
     $router->dispatch($_SERVER['REQUEST_METHOD'], $path);
