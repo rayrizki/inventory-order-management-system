@@ -60,7 +60,7 @@ tabel PO/SO/product_stock sudah berisi seed nyata (30 produk, 25 order,
 | Repository | Test baru | Skenario |
 |---|---|---|
 | `MySqlPurchaseOrderRepositoryTest` | `testCountByStatusIncludesAllStatusesAndReflectsNewRow`, `testListForReportFiltersByOrderDateRange` | `countByStatus()` selalu punya seluruh key status; `listForReport()` cuma mengembalikan baris dalam rentang `order_date` |
-| `MySqlSalesOrderRepositoryTest` | `testCountByStatusIncludesAllStatusesAndScopesToCreatedBy`, `testListForReportFiltersByCreatedAtDateRange` | `countByStatus($createdBy)` benar-benar men-scope kepemilikan (§1.2); `listForReport()` filter `DATE(created_at)` |
+| `MySqlSalesOrderRepositoryTest` | `testCountByStatusIncludesAllStatusesAndScopesToCreatedBy`, `testListForReportFiltersByCreatedAtDateRange` | `countByStatus($createdBy)` benar-benar men-scope kepemilikan (§1.2); `listForReport()` filter rentang `created_at` (sargable - lihat perbaikan di bawah) |
 | `MySqlStockLedgerRepositoryTest` | `testListForReportFiltersByDateRange` | `created_at` diubah paksa lewat `UPDATE` langsung (tidak bisa diset lewat `record()`) supaya filter tanggal benar-benar teruji, bukan kebetulan lolos karena dua baris dibuat "sekarang" |
 | `MySqlProductRepositoryTest` | `testSumInventoryValueReflectsQuantityTimesBuyPrice` | Insert produk+stok baru, pastikan delta nilai inventori tepat `quantity x buy_price` |
 
@@ -93,6 +93,63 @@ bukan 404 atau daftar tak terfilter.
 | Unduh `stock-ledger.csv` rentang penuh (2026-08-01 s.d. 2026-09-18) | 10 baris data (+1 header) - **cocok persis** dengan 10 baris `stock_ledger` hasil seed 25 order |
 | Unduh `stock-ledger.csv` rentang sempit (2026-08-01 s.d. 2026-08-10) | 3 baris data - **lebih sedikit**, membuktikan filter tanggal benar-benar bekerja (bukti brief: "rentang tanggal berbeda") |
 | Unduh `orders.csv` rentang penuh | 25 baris data (+1 header) - **cocok persis** dengan 25 order seed, PO dan SO tercampur terurut tanggal, nama supplier/customer/user terisi benar (bukan id mentah) |
+
+## Perbaikan sargability query tanggal (ditemukan saat audit untuk presentasi SQL)
+
+`MySqlSalesOrderRepository::listForReport()` dan
+`MySqlStockLedgerRepository::listForReport()` awalnya menulis
+`WHERE DATE(created_at) BETWEEN :from_date AND :to_date` - predikat
+**non-sargable** (modul SQL Ch1-2/11: membungkus kolom dalam fungsi
+mencegah MySQL memakai index apa pun pada kolom itu, karena fungsi harus
+dievaluasi ulang per baris, bukan dibandingkan langsung terhadap B-tree
+index). Diperbaiki jadi `created_at >= :from_date AND created_at <
+DATE_ADD(:to_date, INTERVAL 1 DAY)` - batas atas eksklusif memastikan
+seluruh baris PADA tanggal `:to_date` (jam berapa pun) tetap ikut, tanpa
+perlu membungkus kolom sama sekali. `MySqlPurchaseOrderRepository::listForReport()`
+tidak kena masalah ini karena `order_date` sudah bertipe `DATE` murni
+(bukan `DATETIME`), jadi `BETWEEN` polos sudah sargable dari awal.
+
+Dibuktikan lewat `EXPLAIN` langsung (bukan cuma diklaim benar):
+
+```sql
+-- Query yang dirancang untuk idx_ledger_product_warehouse_date
+-- (product_id, warehouse_id, created_at):
+EXPLAIN SELECT * FROM stock_ledger
+WHERE product_id = 35 AND warehouse_id = 1
+  AND created_at >= '2026-08-01' AND created_at < '2026-09-19';
+-- type=range, key_len=13 (KETIGA kolom index terpakai, termasuk created_at)
+
+EXPLAIN SELECT * FROM stock_ledger
+WHERE product_id = 35 AND warehouse_id = 1
+  AND DATE(created_at) BETWEEN '2026-08-01' AND '2026-09-18';
+-- type=ref, key_len=8 (cuma DUA kolom pertama terpakai - created_at
+-- dibungkus DATE() sehingga index tidak bisa dipakai untuk bagian range-nya,
+-- MySQL harus scan semua baris yang cocok product_id+warehouse_id lalu
+-- evaluasi DATE() satu-satu)
+```
+
+Pada `listForReport()` sendiri (query tanpa filter `product_id`/`warehouse_id`,
+cuma rentang tanggal), `EXPLAIN` tetap menunjukkan `type=ALL` (full table
+scan) SEBELUM maupun SESUDAH perbaikan - **disengaja, bukan gagal
+diperbaiki**: `created_at` bukan kolom terdepan di index manapun
+(`idx_ledger_product_warehouse_date`/`idx_so_status_date` keduanya
+menaruh `created_at` di posisi terakhir sesuai left-prefix rule, karena
+pola akses yang jauh lebih sering adalah "riwayat SATU produk+gudang" atau
+"filter status", bukan "seluruh tabel per rentang tanggal tanpa filter
+lain" - REPORT-01 satu-satunya pemakai pola query itu). Menambah index
+khusus `created_at` sendiri untuk satu query laporan yang jarang dipanggil
+bukan trade-off yang sepadan pada skala data demo ini (modul SQL Ch1-2:
+"setiap index punya biaya tulis/storage - jangan index semua kolom").
+Yang tetap terbukti nyata dari perbaikan ini: kolom `filtered` di
+`EXPLAIN` (estimasi selektivitas optimizer) naik dari 100.00 (optimizer
+tidak bisa menaksir apa-apa karena kolomnya dibungkus fungsi) menjadi
+11.11 (optimizer bisa menaksir proporsi baris yang benar-benar cocok) -
+statistik yang lebih akurat ini tetap bernilai untuk query planning
+lanjutan (mis. join order) meski belum ada index yang terpakai langsung.
+
+Full test suite tetap 181/181 dan hasil CSV (jumlah baris, isi) identik
+sebelum/sesudah perbaikan - dikonfirmasi lewat curl ulang terhadap seed
+data yang sama.
 
 ## Known bugs & keterbatasan
 

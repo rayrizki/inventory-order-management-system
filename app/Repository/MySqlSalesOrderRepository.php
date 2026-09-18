@@ -157,10 +157,17 @@ final class MySqlSalesOrderRepository implements SalesOrderRepositoryInterface
 
     public function listForReport(string $fromDate, string $toDate): array
     {
+        // Sengaja BUKAN `WHERE DATE(created_at) BETWEEN :from_date AND
+        // :to_date` - membungkus kolom dalam fungsi membuat predikat
+        // non-sargable (modul SQL Ch1-2/11: MySQL tidak bisa memanfaatkan
+        // index apa pun pada created_at kalau kolomnya dievaluasi lewat
+        // fungsi per baris). Batas atas dibuat eksklusif satu hari setelah
+        // :to_date supaya seluruh baris PADA tanggal :to_date (jam berapa
+        // pun) tetap ikut, tanpa perlu membungkus created_at sama sekali.
         $statement = $this->pdo->prepare(
             'SELECT id, customer_id, warehouse_id, status, created_by, approved_by, created_at
              FROM sales_orders
-             WHERE DATE(created_at) BETWEEN :from_date AND :to_date
+             WHERE created_at >= :from_date AND created_at < DATE_ADD(:to_date, INTERVAL 1 DAY)
              ORDER BY created_at ASC, id ASC'
         );
         $statement->execute(['from_date' => $fromDate, 'to_date' => $toDate]);

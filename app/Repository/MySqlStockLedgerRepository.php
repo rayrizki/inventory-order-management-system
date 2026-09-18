@@ -57,10 +57,15 @@ final class MySqlStockLedgerRepository implements StockLedgerRepositoryInterface
 
     public function listForReport(string $fromDate, string $toDate): array
     {
+        // Sengaja BUKAN `WHERE DATE(created_at) BETWEEN :from_date AND
+        // :to_date` - predikat non-sargable (modul SQL Ch1-2/11: membungkus
+        // kolom dalam fungsi mencegah MySQL memakai index apa pun pada
+        // created_at). Batas atas eksklusif +1 hari supaya seluruh baris
+        // PADA tanggal :to_date tetap ikut tanpa membungkus created_at.
         $statement = $this->pdo->prepare(
             'SELECT id, product_id, warehouse_id, movement_type, quantity, reference_type, reference_id, performed_by, created_at
              FROM stock_ledger
-             WHERE DATE(created_at) BETWEEN :from_date AND :to_date
+             WHERE created_at >= :from_date AND created_at < DATE_ADD(:to_date, INTERVAL 1 DAY)
              ORDER BY created_at ASC, id ASC'
         );
         $statement->execute(['from_date' => $fromDate, 'to_date' => $toDate]);
