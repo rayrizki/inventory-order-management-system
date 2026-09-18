@@ -14,6 +14,21 @@ final class ProductService
 {
     public const PER_PAGE = 10;
 
+    /** PRD-01: ukuran maksimum gambar produk yang diunggah. */
+    private const MAX_IMAGE_SIZE_BYTES = 2 * 1024 * 1024;
+
+    /**
+     * Whitelist tipe gambar - key dicocokkan terhadap MIME sungguhan hasil
+     * `finfo` (sniffing isi file), BUKAN terhadap ekstensi nama file atau
+     * Content-Type yang dikirim browser (keduanya bisa dipalsukan). Value
+     * dipakai sebagai ekstensi nama file acak yang disimpan.
+     */
+    private const ALLOWED_IMAGE_MIME_TYPES = [
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        'image/webp' => 'webp',
+    ];
+
     public function __construct(
         private readonly ProductRepositoryInterface $products,
         private readonly CategoryRepositoryInterface $categories,
@@ -27,6 +42,7 @@ final class ProductService
         ?string $search = null,
         ?int $categoryId = null,
         ?bool $isActive = null,
+        ?string $stockStatus = null,
         int $page = 1,
         int $perPage = self::PER_PAGE,
         string $sortBy = 'name',
@@ -35,12 +51,12 @@ final class ProductService
         $perPage = max(1, $perPage);
         $offset = (max(1, $page) - 1) * $perPage;
 
-        return $this->products->listAll($this->normalizeSearch($search), $categoryId, $isActive, $perPage, $offset, $sortBy, $sortDir);
+        return $this->products->listAll($this->normalizeSearch($search), $categoryId, $isActive, $stockStatus, $perPage, $offset, $sortBy, $sortDir);
     }
 
-    public function countProducts(?string $search = null, ?int $categoryId = null, ?bool $isActive = null): int
+    public function countProducts(?string $search = null, ?int $categoryId = null, ?bool $isActive = null, ?string $stockStatus = null): int
     {
-        return $this->products->countAll($this->normalizeSearch($search), $categoryId, $isActive);
+        return $this->products->countAll($this->normalizeSearch($search), $categoryId, $isActive, $stockStatus);
     }
 
     public function getProductById(int $id): Product
@@ -70,11 +86,12 @@ final class ProductService
     }
 
     /**
-     * @param array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string} $input
+     * @param array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string, image?: array{name: string, type: string, tmp_name: string, error: int, size: int}|null} $input
      */
     public function createProduct(array $input): Product
     {
         $data = $this->validate($input, null);
+        $imagePath = $this->storeImage($data['image']);
 
         return $this->products->save(new Product(
             null,
@@ -85,18 +102,28 @@ final class ProductService
             $data['buy_price'],
             $data['sell_price'],
             $data['reorder_point'],
-            null,
+            $imagePath,
             true,
         ));
     }
 
     /**
-     * @param array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string} $input
+     * @param array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string, image?: array{name: string, type: string, tmp_name: string, error: int, size: int}|null} $input
      */
     public function updateProduct(int $id, array $input): Product
     {
         $existing = $this->getProductById($id);
         $data = $this->validate($input, $id);
+
+        // Gambar baru menggantikan yang lama (dan file lama dihapus dari
+        // disk); kalau tidak ada gambar baru diunggah, gambar lama
+        // dipertahankan - pola yang sama dengan UserService::updateUser()
+        // mempertahankan hash password lama saat field password dikosongkan.
+        $newImagePath = $this->storeImage($data['image']);
+        $imagePath = $newImagePath ?? $existing->imagePath;
+        if ($newImagePath !== null && $existing->imagePath !== null) {
+            $this->deleteImageFile($existing->imagePath);
+        }
 
         return $this->products->save(new Product(
             $id,
@@ -107,7 +134,7 @@ final class ProductService
             $data['buy_price'],
             $data['sell_price'],
             $data['reorder_point'],
-            $existing->imagePath,
+            $imagePath,
             $existing->isActive,
         ));
     }
@@ -122,12 +149,21 @@ final class ProductService
      * Validasi seluruh field sekaligus (bukan berhenti di error pertama) supaya
      * form bisa menampilkan semua kesalahan dalam satu kali submit (VAL-01).
      *
-     * @param array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string} $input
-     * @return array{sku: string, name: string, category_id: int, unit: string, buy_price: float, sell_price: float, reorder_point: int}
+     * Tipe param sengaja "optional" (bukan wajib semua key ada) - $input ini
+     * boundary ke $_POST/$_FILES lewat Controller::readInput(), sama seperti
+     * penjelasan di PurchaseOrderService::validate().
+     *
+     * @param array{sku?: string, name?: string, category_id?: string, unit?: string, buy_price?: string, sell_price?: string, reorder_point?: string, image?: array{name: string, type: string, tmp_name: string, error: int, size: int}|null} $input
+     * @return array{sku: string, name: string, category_id: int, unit: string, buy_price: float, sell_price: float, reorder_point: int, image: array{tmp_name: string, extension: string}|null}
      */
     private function validate(array $input, ?int $excludeId): array
     {
         $errors = [];
+
+        [$image, $imageError] = $this->validateImage($input['image'] ?? null);
+        if ($imageError !== null) {
+            $errors['image'] = $imageError;
+        }
 
         $sku = trim($input['sku']);
         $name = trim($input['name']);
@@ -183,7 +219,73 @@ final class ProductService
             'buy_price' => (float) $buyPriceRaw,
             'sell_price' => (float) $sellPriceRaw,
             'reorder_point' => (int) $reorderPointRaw,
+            'image' => $image,
         ];
+    }
+
+    /**
+     * Murni logic (tidak menyentuh disk) untuk bagian error/ukuran - bisa
+     * di-unit-test tanpa file sungguhan. Deteksi MIME asli (`finfo`) baru
+     * dijalankan kalau tmp_name benar-benar file upload sungguhan
+     * (`is_uploaded_file()`) - bagian ini cuma bisa dilalui lewat upload
+     * HTTP multipart nyata, jadi diverifikasi manual (curl), bukan PHPUnit,
+     * konsisten dengan pola pemisahan logic-murni vs I/O di ADR-0005.
+     *
+     * @param array{name: string, type: string, tmp_name: string, error: int, size: int}|null $file
+     * @return array{0: array{tmp_name: string, extension: string}|null, 1: string|null} [data gambar tervalidasi, pesan error]
+     */
+    private function validateImage(?array $file): array
+    {
+        if ($file === null || $file['error'] === UPLOAD_ERR_NO_FILE) {
+            return [null, null];
+        }
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            return [null, 'Gagal mengunggah gambar (kode error: ' . $file['error'] . ').'];
+        }
+
+        if ($file['size'] > self::MAX_IMAGE_SIZE_BYTES) {
+            return [null, 'Ukuran gambar maksimal 2MB.'];
+        }
+
+        if (!is_uploaded_file($file['tmp_name'])) {
+            return [null, 'Berkas gambar tidak valid.'];
+        }
+
+        $mimeType = (new \finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+        if ($mimeType === false || !isset(self::ALLOWED_IMAGE_MIME_TYPES[$mimeType])) {
+            return [null, 'Format gambar harus JPEG, PNG, atau WebP.'];
+        }
+
+        return [['tmp_name' => $file['tmp_name'], 'extension' => self::ALLOWED_IMAGE_MIME_TYPES[$mimeType]], null];
+    }
+
+    /**
+     * @param array{tmp_name: string, extension: string}|null $image
+     */
+    private function storeImage(?array $image): ?string
+    {
+        if ($image === null) {
+            return null;
+        }
+
+        $randomName = bin2hex(random_bytes(16)) . '.' . $image['extension'];
+        move_uploaded_file($image['tmp_name'], $this->uploadDir() . '/' . $randomName);
+
+        return '/uploads/products/' . $randomName;
+    }
+
+    private function deleteImageFile(string $imagePath): void
+    {
+        $path = $this->uploadDir() . '/' . basename($imagePath);
+        if (is_file($path)) {
+            unlink($path);
+        }
+    }
+
+    private function uploadDir(): string
+    {
+        return __DIR__ . '/../../public/uploads/products';
     }
 
     private function normalizeSearch(?string $search): ?string

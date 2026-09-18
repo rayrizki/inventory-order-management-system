@@ -23,7 +23,7 @@ require __DIR__ . '/../layout/shell-start.php';
                 </div>
             </div>
 
-            <form method="post" action="<?= $isEdit ? '/products/' . $product->id : '/products' ?>" novalidate>
+            <form method="post" action="<?= $isEdit ? '/products/' . $product->id : '/products' ?>" enctype="multipart/form-data" novalidate>
                 <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
 
                 <div class="form-card-grid">
@@ -155,6 +155,34 @@ require __DIR__ . '/../layout/shell-start.php';
                             </p>
                             <p class="form-hint form-hint--error" id="reorder_point-required" <?= isset($errors['reorder_point']) ? '' : 'hidden' ?>>
                                 <?= htmlspecialchars($errors['reorder_point'] ?? 'Reorder point wajib diisi.') ?>
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="form-card--section">
+                        <h2>Gambar Produk (Opsional)</h2>
+
+                        <?php if ($isEdit && $product->imagePath !== null): ?>
+                            <div class="form-field">
+                                <img src="<?= htmlspecialchars($product->imagePath) ?>" alt="Gambar produk saat ini" style="max-width: 8rem; max-height: 8rem; object-fit: cover; border-radius: var(--radius-md); margin-bottom: var(--space-2);">
+                                <p class="form-hint">Gambar saat ini. Pilih file baru di bawah untuk menggantinya.</p>
+                            </div>
+                        <?php endif; ?>
+
+                        <div class="form-field">
+                            <label for="image">Berkas Gambar</label>
+                            <input
+                                type="file"
+                                id="image"
+                                name="image"
+                                accept="image/jpeg,image/png,image/webp"
+                                aria-describedby="image-hint image-error"
+                            >
+                            <p class="form-hint" id="image-hint" <?= isset($errors['image']) ? 'hidden' : '' ?>>
+                                Format JPEG, PNG, atau WebP. Ukuran maksimal 2MB.
+                            </p>
+                            <p class="form-hint form-hint--error" id="image-error" <?= isset($errors['image']) ? '' : 'hidden' ?>>
+                                <?= htmlspecialchars($errors['image'] ?? '') ?>
                             </p>
                         </div>
                     </div>

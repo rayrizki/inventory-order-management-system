@@ -3,8 +3,14 @@
 .env.local
 
 /database/*.sqlite
-/storage/uploads/*
-!/storage/uploads/.gitkeep
+
+# PRD-01: gambar produk diunggah ke public/ (bukan storage/ di luar docroot)
+# supaya bisa diakses langsung via URL tanpa Controller streaming khusus -
+# public/ memang satu-satunya docroot yang dilayani `php -S -t public`
+# (lihat Dockerfile), jadi ini pilihan paling sederhana untuk aset gambar
+# katalog yang memang tidak sensitif/tidak perlu access-control tambahan.
+/public/uploads/products/*
+!/public/uploads/products/.gitkeep
 
 .phpunit.cache/
 .phpunit.result.cache

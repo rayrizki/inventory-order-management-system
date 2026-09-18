@@ -196,4 +196,91 @@ final class ProductServiceTest extends TestCase
 
         $service->getProductBySku('SKU-TIDAK-ADA');
     }
+
+    public function testListProductsFiltersByStockStatus(): void
+    {
+        $categories = new InMemoryCategoryRepository([new Category(1, 'Elektronik', null)]);
+        $products = new InMemoryProductRepository(
+            [
+                new Product(1, 'SKU-001', 'Stok Rendah', 1, 'pcs', 10000, 15000, 10, null, true),
+                new Product(2, 'SKU-002', 'Stok Normal', 1, 'pcs', 10000, 15000, 10, null, true),
+            ],
+            totalStockByProductId: [1 => 5, 2 => 20],
+        );
+        $service = $this->makeService($products, $categories);
+
+        $low = $service->listProducts(stockStatus: 'low');
+        $normal = $service->listProducts(stockStatus: 'normal');
+
+        self::assertCount(1, $low);
+        self::assertSame('Stok Rendah', $low[0]->name);
+        self::assertCount(1, $normal);
+        self::assertSame('Stok Normal', $normal[0]->name);
+    }
+
+    public function testCreateProductWithoutImageLeavesImagePathNull(): void
+    {
+        $service = $this->makeService();
+
+        $product = $service->createProduct($this->validInput());
+
+        self::assertNull($product->imagePath);
+    }
+
+    public function testCreateProductTreatsNoFileUploadErrorAsNoImage(): void
+    {
+        $service = $this->makeService();
+
+        $product = $service->createProduct($this->validInput([
+            'image' => ['name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0],
+        ]));
+
+        self::assertNull($product->imagePath);
+    }
+
+    public function testCreateProductRejectsFailedUpload(): void
+    {
+        $service = $this->makeService();
+
+        try {
+            $service->createProduct($this->validInput([
+                'image' => ['name' => 'x.jpg', 'type' => 'image/jpeg', 'tmp_name' => '/tmp/x', 'error' => UPLOAD_ERR_PARTIAL, 'size' => 100],
+            ]));
+            self::fail('Expected ValidationException');
+        } catch (ValidationException $exception) {
+            self::assertArrayHasKey('image', $exception->errors());
+        }
+    }
+
+    public function testCreateProductRejectsImageExceedingMaxSize(): void
+    {
+        $service = $this->makeService();
+
+        try {
+            $service->createProduct($this->validInput([
+                'image' => ['name' => 'x.jpg', 'type' => 'image/jpeg', 'tmp_name' => '/tmp/x', 'error' => UPLOAD_ERR_OK, 'size' => 3 * 1024 * 1024],
+            ]));
+            self::fail('Expected ValidationException');
+        } catch (ValidationException $exception) {
+            self::assertSame('Ukuran gambar maksimal 2MB.', $exception->errors()['image']);
+        }
+    }
+
+    public function testCreateProductRejectsUploadNotRegisteredByPhp(): void
+    {
+        // tmp_name yang bukan hasil upload HTTP sungguhan (mis. path buatan
+        // sendiri) ditolak is_uploaded_file() - guard keamanan supaya
+        // Service tidak bisa dipaksa membaca file arbitrer di server lewat
+        // tmp_name yang dipalsukan.
+        $service = $this->makeService();
+
+        try {
+            $service->createProduct($this->validInput([
+                'image' => ['name' => 'x.jpg', 'type' => 'image/jpeg', 'tmp_name' => '/etc/passwd', 'error' => UPLOAD_ERR_OK, 'size' => 100],
+            ]));
+            self::fail('Expected ValidationException');
+        } catch (ValidationException $exception) {
+            self::assertSame('Berkas gambar tidak valid.', $exception->errors()['image']);
+        }
+    }
 }

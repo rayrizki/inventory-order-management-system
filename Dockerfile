@@ -18,5 +18,6 @@ COPY . .
 EXPOSE 8000
 
 COPY docker/errors.ini /usr/local/etc/php/conf.d/zz-errors.ini
+COPY docker/uploads.ini /usr/local/etc/php/conf.d/zz-uploads.ini
 
 CMD ["php", "-S", "0.0.0.0:8000", "-t", "public", "public/index.php"]

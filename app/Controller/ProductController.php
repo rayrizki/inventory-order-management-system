@@ -29,6 +29,9 @@ final class ProductController
         'all' => null,
     ];
 
+    /** Nilai ?stock_status= yang valid (FIND-01) - selain ini jatuh ke 'all'. */
+    private const STOCK_STATUS_FILTERS = ['low', 'normal', 'all'];
+
     private const LIST_URL = '/products';
 
     private const STATUS_MESSAGES = [
@@ -63,6 +66,12 @@ final class ProductController
         }
         $isActive = self::STATUS_FILTERS[$status];
 
+        $stockStatus = (string) ($_GET['stock_status'] ?? 'all');
+        if (!in_array($stockStatus, self::STOCK_STATUS_FILTERS, true)) {
+            $stockStatus = 'all';
+        }
+        $stockStatusFilter = $stockStatus === 'all' ? null : $stockStatus;
+
         $perPage = (int) ($_GET['per_page'] ?? ProductService::PER_PAGE);
         if (!in_array($perPage, self::ALLOWED_PER_PAGE, true)) {
             $perPage = ProductService::PER_PAGE;
@@ -74,12 +83,12 @@ final class ProductController
         }
         $sortDir = strtolower((string) ($_GET['dir'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        $totalProducts = $this->productService->countProducts($search, $categoryId, $isActive);
+        $totalProducts = $this->productService->countProducts($search, $categoryId, $isActive, $stockStatusFilter);
         $totalPages = max(1, (int) ceil($totalProducts / $perPage));
 
         if ($totalProducts > 0 && $page > $totalPages) {
             $query = [
-                'page' => $totalPages, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status,
+                'page' => $totalPages, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status, 'stock_status' => $stockStatus,
             ];
             if ($search !== '') {
                 $query['q'] = $search;
@@ -92,7 +101,7 @@ final class ProductController
             exit;
         }
 
-        $products = $this->productService->listProducts($search, $categoryId, $isActive, $page, $perPage, $sortBy, $sortDir);
+        $products = $this->productService->listProducts($search, $categoryId, $isActive, $stockStatusFilter, $page, $perPage, $sortBy, $sortDir);
         $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
         $categoryNames = [];
         foreach ($categories as $category) {
@@ -197,10 +206,13 @@ final class ProductController
     }
 
     /**
-     * @return array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string}
+     * @return array{sku: string, name: string, category_id: string, unit: string, buy_price: string, sell_price: string, reorder_point: string, image: array{name: string, type: string, tmp_name: string, error: int, size: int}|null}
      */
     private function readInput(): array
     {
+        /** @var array{name: string, type: string, tmp_name: string, error: int, size: int}|null $image */
+        $image = $_FILES['image'] ?? null;
+
         return [
             'sku' => (string) ($_POST['sku'] ?? ''),
             'name' => (string) ($_POST['name'] ?? ''),
@@ -209,6 +221,7 @@ final class ProductController
             'buy_price' => (string) ($_POST['buy_price'] ?? ''),
             'sell_price' => (string) ($_POST['sell_price'] ?? ''),
             'reorder_point' => (string) ($_POST['reorder_point'] ?? ''),
+            'image' => $image,
         ];
     }
 }

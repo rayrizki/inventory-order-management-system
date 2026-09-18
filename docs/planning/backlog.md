@@ -22,7 +22,7 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
-| PRD-01 | Produk, kategori, reorder point | **Sebagian** | CRUD dasar + validasi selesai (`docs/testing/master-data-slice.md`); upload gambar produk belum - tech-debt #5, sedang dikerjakan |
+| PRD-01 | Produk, kategori, reorder point | Selesai | CRUD lengkap + upload gambar (MIME sniffing, nama acak, maks 2MB) - `docs/testing/master-data-slice.md` (tech-debt #5) |
 | WH-01 | Gudang & stok multi-lokasi | Selesai | `docs/testing/master-data-slice.md` |
 
 ## 2.3 Purchase Order
@@ -42,7 +42,7 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
 | VIEW-01 | List, detail, empty state | **Sebagian** | Empty state & detail page fungsional di semua modul (diverifikasi Playwright/curl per slice); **belum ada file screenshot tersimpan** sebagai bukti eksplisit yang diminta brief |
-| FIND-01 | Search/filter/sort/pagination + seed 30 produk & 25 order | **Sebagian** | Search/filter/sort/pagination selesai untuk Produk, PO, SO; seed 25 order gabungan PO+SO selesai (tech-debt #6, `docs/testing/seed-data-verification.md`) - PO kini teruji 2 halaman pagination dengan data nyata; filter status stok (low/normal) Produk masih belum (tech-debt #5) |
+| FIND-01 | Search/filter/sort/pagination + seed 30 produk & 25 order | Selesai | Search/filter/sort/pagination selesai untuk Produk, PO, SO termasuk filter status stok low/normal (tech-debt #5); seed 25 order gabungan PO+SO selesai (tech-debt #6, `docs/testing/seed-data-verification.md`) - PO kini teruji 2 halaman pagination dengan data nyata |
 | DASH-01 | Dashboard per role dari query agregasi | Belum | Giliran berikutnya sesuai urutan §2 |
 | REPORT-01 | Laporan CSV (stock ledger + status order) | Belum | Menyusul setelah DASH-01 |
 
@@ -82,16 +82,15 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
-| TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 156 test total, jauh dari 6 minimum, mencakup lebih dari 3 area logic |
+| TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 163 test total, jauh dari 6 minimum, mencakup lebih dari 3 area logic |
 | TEST-02 | Integration test MySQL (min 3) | Selesai (melebihi minimum) | Termasuk bukti eksplisit oversell-prevention SO-01 |
 | TEST-03 | Static analysis (PHPStan level 5+) | Selesai | PHPStan level 6, 0 error - `docs/quality/static-analysis.md` |
 
 ## Ringkasan status saat ini (2026-09-18)
 
-- **Selesai penuh**: 18 dari 24 item.
-- **Sebagian** (gap eksplisit, sedang/akan dikerjakan): PRD-01 (upload
-  gambar belum), VIEW-01 (screenshot belum), FIND-01 (filter status stok
-  Produk belum - seed 25 order sudah selesai), UI-01 (screenshot belum) -
-  lihat `docs/quality/tech-debt.md` #5.
+- **Selesai penuh**: 20 dari 24 item.
+- **Sebagian** (gap eksplisit, sedang/akan dikerjakan): VIEW-01 (screenshot
+  belum), UI-01 (screenshot belum) - keduanya butuh evidence visual, bukan
+  fungsionalitas yang belum jalan.
 - **Belum dikerjakan**: DASH-01, REPORT-01 (giliran berikutnya sesuai
   urutan §2), DESIGN-04 (menunggu assessor, di luar kendali jadwal peserta).

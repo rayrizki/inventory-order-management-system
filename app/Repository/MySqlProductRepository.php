@@ -61,7 +61,8 @@ final class MySqlProductRepository implements ProductRepositoryInterface
 
         $statement = $this->pdo->prepare(
             'UPDATE products SET sku = :sku, name = :name, category_id = :category_id, unit = :unit,
-                buy_price = :buy_price, sell_price = :sell_price, reorder_point = :reorder_point
+                buy_price = :buy_price, sell_price = :sell_price, reorder_point = :reorder_point,
+                image_path = :image_path
              WHERE id = :id'
         );
         $statement->execute([
@@ -72,6 +73,7 @@ final class MySqlProductRepository implements ProductRepositoryInterface
             'buy_price' => $product->buyPrice,
             'sell_price' => $product->sellPrice,
             'reorder_point' => $product->reorderPoint,
+            'image_path' => $product->imagePath,
             'id' => $product->id,
         ]);
 
@@ -82,19 +84,31 @@ final class MySqlProductRepository implements ProductRepositoryInterface
         ?string $search = null,
         ?int $categoryId = null,
         ?bool $isActive = null,
+        ?string $stockStatus = null,
         int $limit = 10,
         int $offset = 0,
         string $sortBy = 'name',
         string $sortDir = 'asc',
     ): array {
-        $column = in_array($sortBy, self::SORTABLE_COLUMNS, true) ? $sortBy : 'name';
+        $column = in_array($sortBy, self::SORTABLE_COLUMNS, true) ? 'p.' . $sortBy : 'p.name';
         $direction = strtolower($sortDir) === 'desc' ? 'DESC' : 'ASC';
 
-        [$where, $params] = $this->buildFilter($search, $categoryId, $isActive);
+        [$where, $having, $params] = $this->buildFilter($search, $categoryId, $isActive, $stockStatus);
 
+        // LEFT JOIN + GROUP BY dipakai untuk SEMUA query (bukan cuma saat
+        // stockStatus diisi) supaya cuma ada satu bentuk query untuk
+        // listAll() - stockStatus null tetap benar (HAVING kosong berarti
+        // seluruh grup lolos), lebih sederhana daripada dua jalur SQL
+        // terpisah yang bisa saling menyimpang.
         $statement = $this->pdo->prepare(
-            'SELECT ' . self::COLUMNS . " FROM products {$where}
-             ORDER BY {$column} {$direction} LIMIT :limit OFFSET :offset"
+            'SELECT p.id, p.sku, p.name, p.category_id, p.unit, p.buy_price, p.sell_price, p.reorder_point, p.image_path, p.is_active
+             FROM products p
+             LEFT JOIN product_stock ps ON ps.product_id = p.id
+             ' . $where . '
+             GROUP BY p.id
+             ' . $having . "
+             ORDER BY {$column} {$direction}, p.id {$direction}
+             LIMIT :limit OFFSET :offset"
         );
         foreach ($params as $key => $value) {
             $statement->bindValue($key, $value);
@@ -106,11 +120,20 @@ final class MySqlProductRepository implements ProductRepositoryInterface
         return array_map($this->hydrate(...), $statement->fetchAll());
     }
 
-    public function countAll(?string $search = null, ?int $categoryId = null, ?bool $isActive = null): int
+    public function countAll(?string $search = null, ?int $categoryId = null, ?bool $isActive = null, ?string $stockStatus = null): int
     {
-        [$where, $params] = $this->buildFilter($search, $categoryId, $isActive);
+        [$where, $having, $params] = $this->buildFilter($search, $categoryId, $isActive, $stockStatus);
 
-        $statement = $this->pdo->prepare("SELECT COUNT(*) FROM products {$where}");
+        $statement = $this->pdo->prepare(
+            'SELECT COUNT(*) FROM (
+                SELECT p.id
+                FROM products p
+                LEFT JOIN product_stock ps ON ps.product_id = p.id
+                ' . $where . '
+                GROUP BY p.id
+                ' . $having . '
+             ) counted'
+        );
         $statement->execute($params);
 
         return (int) $statement->fetchColumn();
@@ -126,9 +149,9 @@ final class MySqlProductRepository implements ProductRepositoryInterface
     }
 
     /**
-     * @return array{0: string, 1: array<string, mixed>}
+     * @return array{0: string, 1: string, 2: array<string, mixed>}
      */
-    private function buildFilter(?string $search, ?int $categoryId, ?bool $isActive): array
+    private function buildFilter(?string $search, ?int $categoryId, ?bool $isActive, ?string $stockStatus = null): array
     {
         $conditions = [];
         $params = [];
@@ -138,24 +161,42 @@ final class MySqlProductRepository implements ProductRepositoryInterface
             // ini pakai native prepared statement (EMULATE_PREPARES => false) -
             // MySQL native tidak mendukung binding satu named placeholder ke
             // lebih dari satu posisi dalam query yang sama.
-            $conditions[] = '(sku LIKE :search_sku OR name LIKE :search_name)';
+            $conditions[] = '(p.sku LIKE :search_sku OR p.name LIKE :search_name)';
             $params['search_sku'] = '%' . $search . '%';
             $params['search_name'] = '%' . $search . '%';
         }
 
         if ($categoryId !== null) {
-            $conditions[] = 'category_id = :category_id';
+            $conditions[] = 'p.category_id = :category_id';
             $params['category_id'] = $categoryId;
         }
 
         if ($isActive !== null) {
-            $conditions[] = 'is_active = :is_active';
+            $conditions[] = 'p.is_active = :is_active';
             $params['is_active'] = (int) $isActive;
         }
 
         $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
 
-        return [$where, $params];
+        // HAVING (bukan WHERE) karena total stok adalah hasil agregasi
+        // (SUM lintas baris product_stock per produk) - baru bisa dievaluasi
+        // setelah GROUP BY, tidak bisa difilter di level baris mentah.
+        // COALESCE(SUM(...), 0) diperlukan karena produk tanpa baris
+        // product_stock sama sekali (belum pernah ada goods receipt) harus
+        // dianggap stok 0 (LEFT JOIN menghasilkan NULL, bukan 0).
+        // p.reorder_point dibungkus MAX() sekalipun sudah functionally
+        // dependent ke p.id (primary key, sudah di GROUP BY) - MySQL HANYA
+        // mengizinkan functional dependency itu di SELECT list, HAVING
+        // tetap menolak kolom non-agregat yang tidak eksplisit ada di
+        // GROUP BY (`Unknown column` 1054, bukan error functional
+        // dependency yang lebih jelas - ditemukan lewat reproduksi manual).
+        $having = match ($stockStatus) {
+            'low' => 'HAVING COALESCE(SUM(ps.quantity), 0) < MAX(p.reorder_point)',
+            'normal' => 'HAVING COALESCE(SUM(ps.quantity), 0) >= MAX(p.reorder_point)',
+            default => '',
+        };
+
+        return [$where, $having, $params];
     }
 
     /**

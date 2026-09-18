@@ -6,6 +6,7 @@
  * @var string $search
  * @var int|null $categoryId
  * @var string $status
+ * @var string $stockStatus
  * @var int $page
  * @var int $perPage
  * @var int $totalPages
@@ -21,8 +22,8 @@ $pageTitle = 'Produk';
 $activeNav = 'products';
 require __DIR__ . '/../layout/shell-start.php';
 
-$buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $status, $perPage, $sortBy, $sortDir): string {
-    $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status];
+$buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
+    $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status, 'stock_status' => $stockStatus];
     if ($search !== '') {
         $query['q'] = $search;
     }
@@ -38,8 +39,8 @@ $buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $st
 // q ikut ditambahkan lagi karena $search masih terisi (tombol X cuma
 // tampil saat $search !== ''), jadi pencariannya tidak pernah benar-benar
 // hilang.
-$buildClearSearchUrl = static function () use ($categoryId, $status, $perPage, $sortBy, $sortDir): string {
-    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status];
+$buildClearSearchUrl = static function () use ($categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
+    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status, 'stock_status' => $stockStatus];
     if ($categoryId !== null) {
         $query['category_id'] = $categoryId;
     }
@@ -47,9 +48,9 @@ $buildClearSearchUrl = static function () use ($categoryId, $status, $perPage, $
     return '/products?' . http_build_query($query);
 };
 
-$buildSortUrl = static function (string $column) use ($search, $categoryId, $status, $perPage, $sortBy, $sortDir): string {
+$buildSortUrl = static function (string $column) use ($search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
     $nextDir = ($sortBy === $column && $sortDir === 'asc') ? 'desc' : 'asc';
-    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $column, 'dir' => $nextDir, 'status' => $status];
+    $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $column, 'dir' => $nextDir, 'status' => $status, 'stock_status' => $stockStatus];
     if ($search !== '') {
         $query['q'] = $search;
     }
@@ -98,6 +99,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                     <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
                     <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
                     <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+                    <input type="hidden" name="stock_status" value="<?= htmlspecialchars($stockStatus) ?>">
                     <?php if ($categoryId !== null): ?>
                         <input type="hidden" name="category_id" value="<?= $categoryId ?>">
                     <?php endif; ?>
@@ -133,6 +135,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                     <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
                     <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
                     <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+                    <input type="hidden" name="stock_status" value="<?= htmlspecialchars($stockStatus) ?>">
                     <label for="product-category" class="sr-only">Filter kategori</label>
                     <select id="product-category" name="category_id" data-auto-submit>
                         <option value="">Semua Kategori</option>
@@ -154,11 +157,31 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                     <input type="hidden" name="per_page" value="<?= $perPage ?>">
                     <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
                     <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
+                    <input type="hidden" name="stock_status" value="<?= htmlspecialchars($stockStatus) ?>">
                     <label for="product-status" class="sr-only">Filter status</label>
                     <select id="product-status" name="status" data-auto-submit>
                         <option value="all" <?= $status === 'all' ? 'selected' : '' ?>>Semua Status</option>
                         <option value="active" <?= $status === 'active' ? 'selected' : '' ?>>Aktif</option>
                         <option value="inactive" <?= $status === 'inactive' ? 'selected' : '' ?>>Nonaktif</option>
+                    </select>
+                </form>
+
+                <form method="get" action="/products" class="status-filter">
+                    <?php if ($search !== ''): ?>
+                        <input type="hidden" name="q" value="<?= htmlspecialchars($search) ?>">
+                    <?php endif; ?>
+                    <?php if ($categoryId !== null): ?>
+                        <input type="hidden" name="category_id" value="<?= $categoryId ?>">
+                    <?php endif; ?>
+                    <input type="hidden" name="per_page" value="<?= $perPage ?>">
+                    <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
+                    <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
+                    <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+                    <label for="product-stock-status" class="sr-only">Filter status stok</label>
+                    <select id="product-stock-status" name="stock_status" data-auto-submit>
+                        <option value="all" <?= $stockStatus === 'all' ? 'selected' : '' ?>>Semua Stok</option>
+                        <option value="low" <?= $stockStatus === 'low' ? 'selected' : '' ?>>Stok Rendah</option>
+                        <option value="normal" <?= $stockStatus === 'normal' ? 'selected' : '' ?>>Stok Normal</option>
                     </select>
                 </form>
                 </div>
@@ -173,7 +196,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                 <?php endif; ?>
             </div>
 
-            <?php if ($products === [] && ($search !== '' || $categoryId !== null || $status !== 'all')): ?>
+            <?php if ($products === [] && ($search !== '' || $categoryId !== null || $status !== 'all' || $stockStatus !== 'all')): ?>
                 <div class="empty-state">
                     <p>Tidak ada produk yang cocok dengan filter saat ini.</p>
                     <a href="/products" class="btn-link">Hapus filter</a>
@@ -195,6 +218,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                     <table class="data-table">
                         <thead>
                             <tr>
+                                <th>Gambar</th>
                                 <th>
                                     <a href="<?= htmlspecialchars($buildSortUrl('sku')) ?>" class="data-table__sort">
                                         SKU
@@ -223,6 +247,13 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                         <tbody>
                             <?php foreach ($products as $product): ?>
                             <tr>
+                                <td>
+                                    <?php if ($product->imagePath !== null): ?>
+                                        <img src="<?= htmlspecialchars($product->imagePath) ?>" alt="" style="width: 2.5rem; height: 2.5rem; object-fit: cover; border-radius: var(--radius-md);">
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td><?= htmlspecialchars($product->sku) ?></td>
                                 <td><?= htmlspecialchars($product->name) ?></td>
                                 <td class="text-muted"><?= htmlspecialchars($categoryNames[$product->categoryId] ?? '-') ?></td>
@@ -273,6 +304,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                         <input type="hidden" name="sort" value="<?= htmlspecialchars($sortBy) ?>">
                         <input type="hidden" name="dir" value="<?= htmlspecialchars($sortDir) ?>">
                         <input type="hidden" name="status" value="<?= htmlspecialchars($status) ?>">
+                        <input type="hidden" name="stock_status" value="<?= htmlspecialchars($stockStatus) ?>">
                         <label for="per-page">Baris per halaman</label>
                         <select id="per-page" name="per_page" data-auto-submit>
                             <?php foreach ([5, 10, 25, 50, 100] as $option): ?>

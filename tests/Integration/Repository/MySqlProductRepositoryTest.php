@@ -76,7 +76,7 @@ final class MySqlProductRepositoryTest extends TestCase
         self::assertNull($repository->findBySku('SKU-TIDAK-ADA'));
     }
 
-    public function testSaveUpdatesFieldsWithoutTouchingActiveStatusOrImagePath(): void
+    public function testSaveUpdatesFieldsAndImagePathWithoutTouchingActiveStatus(): void
     {
         $repository = new MySqlProductRepository($this->pdo);
 
@@ -84,12 +84,13 @@ final class MySqlProductRepositoryTest extends TestCase
         $this->createdId = $saved->id;
         $repository->setActive($saved->id, false);
 
-        $repository->save(new Product($saved->id, 'TEST-SKU-ZZZ-2', 'Sesudah Update', $this->categoryId, 'box', 20000, 30000, 10, null, true));
+        $repository->save(new Product($saved->id, 'TEST-SKU-ZZZ-2', 'Sesudah Update', $this->categoryId, 'box', 20000, 30000, 10, '/uploads/products/updated.jpg', true));
 
         $found = $repository->findById($saved->id);
         self::assertSame('TEST-SKU-ZZZ-2', $found->sku);
         self::assertSame('Sesudah Update', $found->name);
         self::assertSame(20000.0, $found->buyPrice);
+        self::assertSame('/uploads/products/updated.jpg', $found->imagePath, 'PRD-01: image_path harus ikut ter-update - sebelumnya bug, UPDATE tidak pernah menyentuh kolom ini sama sekali');
         self::assertFalse($found->isActive, 'save() untuk UPDATE tidak boleh mengubah is_active - itu tugas setActive()');
     }
 
@@ -132,5 +133,46 @@ final class MySqlProductRepositoryTest extends TestCase
             $repository->listAll(search: 'Test Produk Unik ZZZ', isActive: true),
         );
         self::assertNotContains('Test Produk Unik ZZZ', $activeOnly, 'harus tersaring saat filter isActive=true karena baris ini dinonaktifkan');
+    }
+
+    /**
+     * FIND-01: filter status stok (low/normal) - produk tanpa baris
+     * product_stock SAMA SEKALI (belum pernah goods receipt) harus dianggap
+     * stok 0, jadi otomatis masuk kategori 'low' selama reorder_point > 0.
+     * Ini membuktikan LEFT JOIN + COALESCE bekerja, bukan cuma INNER JOIN
+     * yang diam-diam mengecualikan produk tanpa stok dari kedua filter.
+     */
+    public function testListAllFiltersByStockStatus(): void
+    {
+        $repository = new MySqlProductRepository($this->pdo);
+
+        $saved = $repository->save(new Product(null, 'TEST-SKU-ZZZ', 'Test Produk Tanpa Stok ZZZ', $this->categoryId, 'pcs', 10000, 15000, 5, null, true));
+        $this->createdId = $saved->id;
+
+        $lowNames = array_map(
+            static fn (Product $product): string => $product->name,
+            $repository->listAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low'),
+        );
+        self::assertContains('Test Produk Tanpa Stok ZZZ', $lowNames, 'produk tanpa baris product_stock harus dianggap stok 0 (LOW), bukan dikecualikan');
+
+        $normalNames = array_map(
+            static fn (Product $product): string => $product->name,
+            $repository->listAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal'),
+        );
+        self::assertNotContains('Test Produk Tanpa Stok ZZZ', $normalNames);
+
+        // countAll() punya bentuk query BEDA dari listAll() (subquery
+        // derived table yang cuma SELECT p.id, tanpa p.reorder_point) -
+        // MySQL's functional-dependency exception untuk HAVING ternyata
+        // cuma berlaku kalau kolomnya ADA di SELECT list (listAll() selalu
+        // memilih reorder_point untuk hydrate(), jadi HAVING-nya kebetulan
+        // valid meski reorder_point tidak dibungkus agregat) - countAll()
+        // sempat gagal dengan error 1054 "Unknown column" sampai
+        // reorder_point dibungkus MAX() di buildFilter(). Assert count()
+        // di sini secara eksplisit supaya regresi ini tidak lolos lagi
+        // tanpa terdeteksi test (listAll() saja tidak cukup untuk
+        // membuktikan countAll() bekerja).
+        self::assertSame(1, $repository->countAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low'));
+        self::assertSame(0, $repository->countAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal'));
     }
 }

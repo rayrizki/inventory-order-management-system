@@ -30,6 +30,9 @@ $isLowStock = $stock['total'] < $product->reorderPoint;
 
             <div class="detail-card">
                 <h2>Informasi Produk</h2>
+                <?php if ($product->imagePath !== null): ?>
+                    <img src="<?= htmlspecialchars($product->imagePath) ?>" alt="Gambar produk <?= htmlspecialchars($product->name) ?>" style="max-width: 12rem; max-height: 12rem; object-fit: cover; border-radius: var(--radius-md); margin-bottom: var(--space-4);">
+                <?php endif; ?>
                 <dl class="detail-grid">
                     <div>
                         <dt>Kategori</dt>

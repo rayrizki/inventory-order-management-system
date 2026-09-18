@@ -15,9 +15,16 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
 
     /**
      * @param Product[] $products
+     * @param array<int, int> $totalStockByProductId productId => total stok
+     *     lintas gudang - fixture untuk menguji filter stockStatus tanpa
+     *     ProductStockRepositoryInterface sungguhan (fake ini murni berdiri
+     *     sendiri, tidak menyimpan relasi produk-gudang seperti MySQL).
+     *     Produk yang tidak ada di map dianggap stok 0.
      */
-    public function __construct(array $products = [])
-    {
+    public function __construct(
+        array $products = [],
+        private readonly array $totalStockByProductId = [],
+    ) {
         foreach ($products as $product) {
             $this->products[$product->id] = $product;
             $this->nextId = max($this->nextId, $product->id + 1);
@@ -66,12 +73,13 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
         ?string $search = null,
         ?int $categoryId = null,
         ?bool $isActive = null,
+        ?string $stockStatus = null,
         int $limit = 10,
         int $offset = 0,
         string $sortBy = 'name',
         string $sortDir = 'asc',
     ): array {
-        $products = $this->filtered($search, $categoryId, $isActive);
+        $products = $this->filtered($search, $categoryId, $isActive, $stockStatus);
 
         usort($products, static function (Product $a, Product $b) use ($sortBy, $sortDir): int {
             $valueA = $sortBy === 'sku' ? $a->sku : $a->name;
@@ -84,9 +92,9 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
         return array_slice($products, $offset, $limit);
     }
 
-    public function countAll(?string $search = null, ?int $categoryId = null, ?bool $isActive = null): int
+    public function countAll(?string $search = null, ?int $categoryId = null, ?bool $isActive = null, ?string $stockStatus = null): int
     {
-        return count($this->filtered($search, $categoryId, $isActive));
+        return count($this->filtered($search, $categoryId, $isActive, $stockStatus));
     }
 
     public function setActive(int $id, bool $isActive): void
@@ -112,7 +120,7 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
     /**
      * @return Product[]
      */
-    private function filtered(?string $search, ?int $categoryId, ?bool $isActive): array
+    private function filtered(?string $search, ?int $categoryId, ?bool $isActive, ?string $stockStatus = null): array
     {
         $products = array_values($this->products);
 
@@ -135,6 +143,19 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
             $products = array_values(array_filter(
                 $products,
                 static fn (Product $product): bool => $product->isActive === $isActive,
+            ));
+        }
+
+        if ($stockStatus === 'low' || $stockStatus === 'normal') {
+            $products = array_values(array_filter(
+                $products,
+                function (Product $product) use ($stockStatus): bool {
+                    $totalStock = $this->totalStockByProductId[$product->id] ?? 0;
+
+                    return $stockStatus === 'low'
+                        ? $totalStock < $product->reorderPoint
+                        : $totalStock >= $product->reorderPoint;
+                },
             ));
         }
 

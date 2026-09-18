@@ -62,5 +62,76 @@ di Docker, tiap test membuat dan menghapus baris miliknya sendiri di
 
 ## Known bugs & keterbatasan
 
-- Upload gambar Produk (PRD-01) dan filter status stok low/normal (FIND-01) belum diimplementasikan - ditunda sengaja mengikuti urutan pembangunan brief §2 ("tambahkan upload gambar setelah alur transaksi inti stabil"). Lihat `docs/quality/tech-debt.md` #5.
 - Selama pengembangan modul Produk, script Playwright verifikasi sempat salah klik tombol "Keluar" (logout) alih-alih tombol submit form karena selector `button[type=submit]` tidak di-scope - ini bug pada script test, bukan pada aplikasi (root cause dikonfirmasi lewat logging request/response: `POST /logout` yang tercatat, bukan `POST /products`). Sudah diperbaiki di script, tidak berdampak pada kode aplikasi.
+
+## Update 2026-09-18: PRD-01 upload gambar produk + FIND-01 filter status stok (tech-debt #5)
+
+Kedua item di atas sempat ditunda (baris sudah dihapus dari "Known bugs &
+keterbatasan" karena sudah selesai) - dikerjakan sekarang setelah PO-01 dan
+SO-01 sama-sama selesai. Full test suite naik ke **163 test** (+7 dari 156
+sebelum SO-01 seed data, minus nol regresi).
+
+### Keputusan desain
+
+- **Lokasi penyimpanan file**: `public/uploads/products/` (bukan
+  `storage/uploads/` yang sempat direncanakan di `.gitignore` scaffold
+  awal, tapi tidak pernah dipakai kode apa pun). `public/` satu-satunya
+  docroot yang dilayani `php -S -t public` (lihat Dockerfile) - gambar
+  produk memang bukan aset sensitif yang butuh access-control tambahan,
+  jadi disimpan langsung di sana supaya bisa diakses via URL tanpa perlu
+  Controller streaming khusus (lebih sederhana, sesuai peringatan brief
+  soal over-engineering).
+- **Validasi tipe file lewat MIME sniffing asli** (`finfo_file()` membaca
+  isi file), BUKAN ekstensi nama file atau `Content-Type` yang dikirim
+  browser (keduanya bisa dipalsukan) - dibuktikan lewat percobaan nyata
+  mengunggah file teks polos berekstensi `.jpg`, ditolak dengan benar.
+- **`is_uploaded_file()`** dicek sebelum `finfo_file()` - guard supaya
+  Service tidak bisa dipaksa membaca file arbitrer di server lewat
+  `tmp_name` yang dipalsukan (bukan hasil upload HTTP sungguhan).
+- **Nama file acak** (`bin2hex(random_bytes(16))` + ekstensi dari MIME
+  tervalidasi, bukan dari nama file asli) - sesuai ketentuan PRD-01 "tidak
+  dapat ditebak".
+- **Gambar lama dihapus dari disk saat diganti** gambar baru (update) -
+  dibuktikan lewat pengujian nyata: file lama benar-benar hilang dari
+  `public/uploads/products/`, file baru muncul.
+- **Filter status stok (FIND-01)** diimplementasikan lewat `LEFT JOIN
+  product_stock` + `GROUP BY` + `HAVING` di `MySqlProductRepository` -
+  produk tanpa baris `product_stock` sama sekali dianggap stok 0 (LOW),
+  bukan dikecualikan dari hasil (`COALESCE(SUM(...), 0)`).
+
+### Bug ditemukan & diperbaiki selama verifikasi (bukan tersisa)
+
+**MySQL menolak `HAVING` yang mereferensikan kolom non-agregat yang tidak
+ada di `GROUP BY`, bahkan kalau functionally dependent ke primary key** -
+`SELECT p.id ... GROUP BY p.id HAVING ... < p.reorder_point` gagal dengan
+`Unknown column 'p.reorder_point' in 'having clause'` (error 1054),
+padahal varian yang sama TAPI dengan `p.reorder_point` ditambahkan ke
+SELECT list (persis bentuk query `listAll()`) berhasil normal - MySQL's
+functional-dependency exception (mengizinkan kolom non-agregat yang
+functionally dependent ke primary key GROUP BY) ternyata CUMA berlaku
+untuk SELECT list, bukan HAVING. `countAll()` (subquery derived table yang
+cuma `SELECT p.id`, tanpa `reorder_point`) kena bug ini; `listAll()`
+kebetulan tidak kena karena SELECT list-nya memang sudah menyertakan
+`reorder_point` untuk `hydrate()`. Ditemukan lewat verifikasi curl end-to-
+end (500 Internal Server Error saat membuka `/products?stock_status=low`),
+BUKAN oleh integration test PHPUnit awal (`testListAllFiltersByStockStatus`
+cuma memanggil `listAll()`, tidak pernah memanggil `countAll()` - gap
+inilah yang membuat bug lolos dari suite test sebelum verifikasi manual).
+Diperbaiki dengan membungkus `p.reorder_point` dalam `MAX()` di
+`buildFilter()` (aman - functionally single-valued per grup, cuma
+memenuhi syarat sintaks HAVING). Test diperkuat dengan assertion eksplisit
+`countAll()` supaya regresi ini tidak bisa lolos lagi tanpa terdeteksi.
+
+### Verifikasi manual (curl multipart, browser sungguhan setelah rebuild)
+
+| Skenario | Hasil |
+|---|---|
+| Upload PNG valid saat create | Berhasil; file tersimpan dengan nama acak, `image_path` tersimpan di DB, bisa diakses langsung via URL (200, `Content-Type: image/png`) |
+| Upload file teks berekstensi `.jpg` (MIME asli bukan gambar) | Ditolak - "Format gambar harus JPEG, PNG, atau WebP." Produk TIDAK dibuat sama sekali |
+| Upload file > 2MB | Ditolak - "Ukuran gambar maksimal 2MB." (setelah `upload_max_filesize`/`post_max_size` php.ini dinaikkan ke 5M/6M supaya validasi APLIKASI yang menampilkan pesan, bukan pesan generik PHP ini "kode error: 1") |
+| Ganti gambar saat update | Berhasil; file lama terhapus dari disk, file baru tersimpan, `image_path` di DB ter-update |
+| Filter `?stock_status=low` | Menampilkan produk dengan total stok (lintas gudang) < reorder_point, termasuk produk tanpa baris `product_stock` sama sekali |
+| Filter `?stock_status=normal` | Mengecualikan seluruh produk low-stock dengan benar |
+
+Data uji (3 percobaan produk `TEST-IMG-*`, termasuk 1 yang berhasil dibuat)
+dan file gambar yang ter-upload dibersihkan setelah verifikasi selesai.
