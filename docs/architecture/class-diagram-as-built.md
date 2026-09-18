@@ -688,6 +688,132 @@ classDiagram
     note for UserController "Beda dari Produk: index() JUGA di-gate\nrequireRole([Admin]), bukan cuma requireLogin() -\nUSR-01 eksplisit bilang Sales/Warehouse Staff\ntidak boleh membuka halaman administrasi user\nSAMA SEKALI, beda dari Produk yang baca-nya\nterbuka untuk semua role."
 ```
 
+## Diagram I - Sales Order & Goods Issue (SO-01, ARCH-02)
+
+```mermaid
+classDiagram
+    direction LR
+
+    class SalesOrderStatus {
+        <<enumeration>>
+        Draft
+        PendingApproval
+        Approved
+        Fulfilled
+        Cancelled
+    }
+
+    class SalesOrderItem {
+        +int? id
+        +int? salesOrderId
+        +int productId
+        +int qty
+        +float sellPrice
+    }
+
+    class SalesOrder {
+        +int? id
+        +int customerId
+        +int warehouseId
+        +SalesOrderStatus status
+        +int createdBy
+        +int? approvedBy
+        +string? createdAt
+        +SalesOrderItem[] items
+    }
+
+    class SalesOrderRepositoryInterface {
+        <<interface>>
+        +findById(int id) SalesOrder?
+        +save(SalesOrder so) SalesOrder
+        +updateStatus(int id, SalesOrderStatus status) void
+        +approve(int id, int approvedBy) void
+        +listAll(string? search, SalesOrderStatus? status, int? createdBy, int limit, int offset, string sortBy, string sortDir) SalesOrder[]
+        +countAll(string? search, SalesOrderStatus? status, int? createdBy) int
+    }
+    class MySqlSalesOrderRepository {
+        -PDO pdo
+    }
+    class InMemorySalesOrderRepository {
+        -SalesOrder[] salesOrders
+    }
+
+    class SalesOrderService {
+        +const PER_PAGE = 10
+        -SalesOrderRepositoryInterface salesOrders
+        -CustomerRepositoryInterface customers
+        -WarehouseRepositoryInterface warehouses
+        -ProductRepositoryInterface products
+        +listSalesOrders(...) SalesOrder[]
+        +countSalesOrders(...) int
+        +getSalesOrderById(int id) SalesOrder
+        +createSalesOrder(array input, int createdBy) SalesOrder
+        +submitForApproval(int id) SalesOrder
+        +approve(int id, int approvedBy) SalesOrder
+        +cancel(int id) SalesOrder
+    }
+
+    class GoodsIssueService {
+        -SalesOrderRepositoryInterface salesOrders
+        -ProductStockRepositoryInterface stocks
+        -StockLedgerRepositoryInterface ledger
+        -PDO pdo
+        +issue(int salesOrderId, int performedBy) SalesOrder
+        +assertCanIssue(SalesOrder so) void
+        +getIssueHistory(int salesOrderId) StockLedgerEntry[]
+    }
+
+    class SalesOrderController {
+        +const CREATE_ROLES
+        +const STATUS_FILTERS
+        +const STATUS_MESSAGES
+        -SalesOrderService salesOrderService
+        -GoodsIssueService goodsIssueService
+        -CustomerService customerService
+        -WarehouseService warehouseService
+        -ProductService productService
+        -AuthGuard guard
+        +index() void
+        +show(string id) void
+        +showCreateForm() void
+        +create() void
+        +submitForApproval(string id) void
+        +approve(string id) void
+        +cancel(string id) void
+        +processGoodsIssue(string id) void
+    }
+
+    SalesOrder "1" *-- "many" SalesOrderItem
+    SalesOrder --> SalesOrderStatus
+    SalesOrderRepositoryInterface <|.. MySqlSalesOrderRepository : implements
+    SalesOrderRepositoryInterface <|.. InMemorySalesOrderRepository : implements
+    SalesOrderService --> SalesOrderRepositoryInterface : constructor injection (interface)
+    SalesOrderService --> CustomerRepositoryInterface : constructor injection (interface)
+    SalesOrderService --> WarehouseRepositoryInterface : constructor injection (interface)
+    SalesOrderService --> ProductRepositoryInterface : constructor injection (interface)
+
+    GoodsIssueService --> SalesOrderRepositoryInterface : constructor injection (interface)
+    GoodsIssueService --> ProductStockRepositoryInterface : constructor injection (interface)
+    GoodsIssueService --> StockLedgerRepositoryInterface : constructor injection (interface)
+    GoodsIssueService --> PDO : constructor injection (concrete - unit of work boundary, lihat ADR-0005/ADR-0006)
+
+    SalesOrderController --> SalesOrderService : constructor injection (concrete)
+    SalesOrderController --> GoodsIssueService : constructor injection (concrete)
+    SalesOrderController --> AuthGuard : constructor injection (concrete)
+    SalesOrderService ..> NotFoundException : throws
+    SalesOrderService ..> ValidationException : throws
+    SalesOrderService ..> ConflictException : throws
+    GoodsIssueService ..> ConflictException : throws
+    GoodsIssueService ..> NotFoundException : throws
+    SalesOrderController ..> ForbiddenException : throws (ownership check)
+
+    note for SalesOrderService "Aturan kepemilikan (Sales cuma boleh lihat/ajukan/\nbatalkan order miliknya sendiri, S1.2) SENGAJA tidak\nada di sini - authorization concern ditegakkan di\nController, bukan diteruskan sebagai parameter Role.\nService cuma tahu transisi status mana yang valid,\nterlepas dari siapa yang memintanya."
+    note for GoodsIssueService "Beda dari GoodsReceiptService (PO-01) dalam dua hal:\n(1) semua item diproses SEKALIGUS qty penuh - tidak\nada input parsial (sales_order_items tidak punya kolom\npenerimaan sebagian), satu item gagal = seluruh\ntransaksi rollback; (2) pengurangan stok pakai\ndecrementIfSufficient() (UPDATE...WHERE quantity>=qty),\nbukan incrementQuantity() dengan delta negatif - lihat\nADR-0006 untuk mekanisme pencegahan oversell lengkap."
+    note for SalesOrderController "Controller paling kompleks sejauh ini: role-gating\n(requireRole) SAJA tidak cukup - approve() Admin-only\ntanpa cek kepemilikan tambahan (Sales tidak pernah\nlolos ke situ), tapi submitForApproval()/cancel() butuh\nkeduanya (role gate DAN perbandingan createdBy langsung\nterhadap CurrentUser) karena Admin dan Sales sama-sama\nlolos role gate tapi Sales harus dibatasi ke order\nmiliknya sendiri."
+```
+
+Catatan tambahan (di luar diagram): item sidebar "Sales Order" SENGAJA tidak diberi filter `roles` seperti "Purchase Order" - ketiga role (Admin, Sales, Warehouse Staff) butuh visibilitas modul ini (Admin penuh, Sales untuk order miliknya, Warehouse Staff untuk melihat SO Approved yang perlu diproses goods issue-nya) - pembatasan sesungguhnya terjadi di dalam `index()` (scoping `createdBy` untuk Sales) dan di tiap aksi mutasi, bukan di level visibilitas menu.
+
 ## Apa yang berubah dari initial ke as-built, dan kenapa
 
 1. **`CurrentUser` bertambah properti `name`.** Initial hanya menyiapkan `id`+`role` untuk kebutuhan otorisasi (`requireRole()`); kebutuhan menampilkan *siapa* yang login (bukan cuma perannya) di sidebar baru muncul belakangan, jadi properti ini ditambah begitu use case-nya nyata - bukan diprediksi di awal.
@@ -705,3 +831,5 @@ classDiagram
 13. **`PurchaseOrderService` bertambah TIGA dependency dibanding initial** (initial cuma `ProductRepositoryInterface`; as-built menambah `SupplierRepositoryInterface`+`WarehouseRepositoryInterface`+tetap `ProductRepositoryInterface`, jadi total 4). `createPurchaseOrder()` harus memvalidasi tiga foreign key sekaligus (supplier, gudang tujuan, dan produk per baris item) sesuai VAL-01 - initial belum menunjukkan validasi selengkap ini karena ditulis sebelum bentuk form/tabel PO final.
 14. **`GoodsReceiptService` menerima `PDO` langsung lewat constructor** - satu-satunya Service di seluruh codebase yang melakukannya, tidak digambar di initial sama sekali (initial cuma menulis catatan teks "dibungkus 1 DB transaction" tanpa menunjukkan mekanismenya). Alasan lengkap: ADR-0005.
 15. **`UserRepositoryInterface` (Diagram H) akhirnya mendapat `save()`/`setActive()`/`listAll()`/`countAll()`** - realisasi dari catatan YAGNI di ADR-0001 dan Diagram B ("ditunda sampai USR-01 benar-benar dikerjakan"). `UserService` menolak role `Admin` secara eksplisit di `validate()` - satu-satunya Service Master Data yang membatasi NILAI enum yang boleh dipilih user (bukan cuma format), karena brief secara spesifik membatasi cakupan modul ini ke "Admin mengelola akun Sales dan Warehouse Staff".
+16. **`ProductStockRepositoryInterface` (Diagram F/G) bertambah `decrementIfSufficient()`** setelah SO-01 (Diagram I) dikerjakan - tidak digambar di initial maupun draf as-built PO-01 karena kebutuhan mengurangi stok (dengan guard oversell) baru nyata begitu goods issue dibangun; `incrementQuantity()` (dipakai goods receipt) tidak butuh guard serupa karena penambahan stok tidak pernah berisiko jadi negatif. Lihat ADR-0006 untuk mekanisme atomiknya.
+17. **`SalesOrderController` (Diagram I) TIDAK mengulang pola `PurchaseOrderController` yang menggabungkan role-gating dengan ownership check secara seragam** - initial (Diagram 3) menyamaratakan "Sales Order" sebagai modul yang cukup di-gate lewat `requireRole()` seperti Purchase Order. Begitu §1.2 dibaca ulang saat coding (Sales boleh membuat/mengajukan/membatalkan order **miliknya sendiri** tapi TIDAK PERNAH boleh approve, termasuk order sendiri), jadi jelas satu role gate saja tidak cukup - beberapa aksi (submitForApproval, cancel) butuh role gate DAN perbandingan `createdBy` eksplisit, sementara approve() cukup role gate saja (Sales tidak pernah lolos ke situ). Ini alasan `SalesOrderController` jadi Controller paling banyak percabangan otorisasi di codebase ini.
