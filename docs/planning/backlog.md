@@ -73,10 +73,10 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
-| DESIGN-01 | Class diagram initial & as-built | Selesai | `docs/planning/class-diagram-initial.md`, `docs/architecture/class-diagram-as-built.md` (9 diagram, A-I, terus diperbarui per slice) |
+| DESIGN-01 | Class diagram initial & as-built | Selesai | `docs/planning/class-diagram-initial.md`, `docs/architecture/class-diagram-as-built.md` (10 diagram, A-J, terus diperbarui per slice) |
 | DESIGN-02 | 2-3 ADR | Selesai (melebihi minimum) | 6 ADR di `docs/architecture/adr-*.md` |
 | DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai | `docs/quality/refactor-log.md`, `docs/quality/tech-debt.md`, commit `3848279` |
-| DESIGN-04 | Critique exercise (cuplikan kode dari assessor) | Belum - menunggu assessor | Isinya baru bisa ditulis setelah assessor memberi cuplikan kode saat defense; `docs/quality/critique.md` belum dibuat sebagai placeholder |
+| DESIGN-04 | Critique exercise (cuplikan kode dari assessor) | Sebagian - menunggu cuplikan assessor | `docs/quality/critique.md` sudah ada berisi self-critique `list-controls.js` (smell, prinsip SOLID yang dilanggar, arah refactor); bagian untuk cuplikan assessor baru bisa diisi saat defense |
 
 ## 3.3 Testing
 

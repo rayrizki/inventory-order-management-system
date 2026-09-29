@@ -248,11 +248,16 @@ INSERT INTO products (sku, name, category_id, unit, buy_price, sell_price, reord
     ('BYA-001', 'Popok Bayi Ukuran M (Pack isi 40)', (SELECT id FROM categories WHERE name = 'Bayi & Anak'), 'pack', 65000, 95000, 25, 1),
     ('BYA-002', 'Botol Susu Bayi 250ml', (SELECT id FROM categories WHERE name = 'Bayi & Anak'), 'pcs', 25000, 42000, 15, 1);
 
--- Baris stok per gudang (WH-01). Sebagian besar produk stoknya di atas
--- reorder point (normal); 7 produk sengaja dibuat di bawah reorder point
--- (termasuk satu yang kosong total, BAP-002) supaya "produk di bawah
--- reorder point" (DASH-01, FIND-01 status stok) punya data nyata untuk
--- didemokan, bukan cuma skenario kosong/hipotetis.
+-- Baris stok per gudang (WH-01). Angka DI BAWAH ini adalah stok AWAL sebelum
+-- order diterapkan; goods receipt (PO) dan goods issue (SO) yang di-seed di
+-- bagian bawah file ini masih akan menambah/mengurangi sebagian baris, jadi
+-- stok akhir yang dilihat aplikasi bukan angka di blok ini.
+--
+-- Kondisi AKHIR yang disengaja (setelah seluruh receipt & issue diterapkan):
+-- 3 produk berada di bawah reorder point - PKN-002 (4 dari rp 10), OOR-001
+-- (8 dari rp 10), dan PKK-002 (8 dari rp 12) - supaya "produk di bawah
+-- reorder point" (DASH-01, FIND-01 status stok, JOB-01 check-low-stock)
+-- punya data nyata untuk didemokan, bukan skenario kosong/hipotetis.
 INSERT INTO product_stock (product_id, warehouse_id, quantity) VALUES
     ((SELECT id FROM products WHERE sku = 'ELK-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Pusat Jakarta'), 30),
     ((SELECT id FROM products WHERE sku = 'ELK-001'), (SELECT id FROM warehouses WHERE name = 'Gudang Cabang Surabaya'), 15),

@@ -1,12 +1,17 @@
 # Class Diagram - As-Built (DESIGN-01)
 
-Dibuat setelah slice Auth (AUTH-01/AUTH-02) dan empat slice pertama Master
-Data (Kategori, Gudang, Supplier, Customer) stabil. Hanya memuat kelas yang
-**benar-benar ada di kode** saat ini - modul yang belum dikerjakan (Produk,
-Purchase Order, Sales Order, Stock Ledger, Dashboard, Laporan) sengaja tidak
-digambar di sini supaya diagram ini tidak berbohong soal apa yang sudah
-selesai; diagram initial (`docs/planning/class-diagram-initial.md`) tetap
-jadi acuan rencana untuk modul-modul itu.
+Ditulis progresif: setiap diagram ditambahkan begitu slice-nya selesai dan
+stabil, bukan digambar sekaligus di akhir. Sekarang mencakup **seluruh modul
+yang dibangun** - Diagram A-B (cross-cutting & Auth), C-F (Master Data:
+Kategori, Gudang, Supplier/Customer, Produk & Stok), G (Purchase Order &
+Goods Receipt), H (Manajemen User), I (Sales Order & Goods Issue), dan J
+(Dashboard & Laporan).
+
+Aturan yang dijaga sepanjang dokumen ini: hanya memuat kelas yang **benar-benar
+ada di kode**, dengan signature dan arah dependency sesuai file aslinya -
+diagram initial (`docs/planning/class-diagram-initial.md`) tetap jadi arsip
+rencana awal, dan perbedaan antara keduanya dirangkum di bagian terakhir
+("Apa yang berubah dari initial ke as-built, dan kenapa").
 
 **Cara baca penanda dependency** (wajib DESIGN-01: dependency ke interface vs ke kelas konkret harus beda tanda):
 - `X ..|> Y` (panah putus-putus, kepala berongga) = **realisasi interface** - `Y` adalah interface, `X` salah satu implementasinya.
@@ -131,7 +136,7 @@ classDiagram
     note for AuthController "BEDA dari initial: method tidak menerima\nRequest / mengembalikan Response - initial\ndiagram mengasumsikan abstraksi itu, tapi\nkodenya baca $_POST/$_GET langsung dan\npanggil header()/require view langsung.\nBerlaku utk semua Controller di as-built ini,\nbukan cuma AuthController."
 ```
 
-## Diagram C - Master Data: Kategori (PRD-01 sebagian - baru Category yang dibangun)
+## Diagram C - Master Data: Kategori (PRD-01)
 
 ```mermaid
 classDiagram
@@ -172,9 +177,9 @@ classDiagram
     }
 
     class CategoryController {
-        +const ALLOWED_PER_PAGE
-        +const ALLOWED_SORT_COLUMNS
-        +const STATUS_MESSAGES
+        -const ALLOWED_PER_PAGE
+        -const ALLOWED_SORT_COLUMNS
+        -const STATUS_MESSAGES
         -CategoryService categoryService
         -AuthGuard guard
         +index() void
@@ -252,10 +257,10 @@ classDiagram
     }
 
     class WarehouseController {
-        +const ALLOWED_PER_PAGE
-        +const ALLOWED_SORT_COLUMNS
-        +const STATUS_FILTERS
-        +const STATUS_MESSAGES
+        -const ALLOWED_PER_PAGE
+        -const ALLOWED_SORT_COLUMNS
+        -const STATUS_FILTERS
+        -const STATUS_MESSAGES
         -WarehouseService warehouseService
         -AuthGuard guard
         +index() void
@@ -282,7 +287,7 @@ classDiagram
 ## Diagram E - Master Data: Supplier & Customer (§1.3, keduanya identik strukturnya)
 
 Didemonstrasikan sekali pakai `Supplier` sebagai contoh, mengikuti gaya yang
-sama dengan Diagram 0 di diagram initial. `Customer` (`CustomerEntity`,
+sama dengan Diagram 0 di diagram initial. `Customer` (`App\Entity\Customer`,
 `CustomerRepositoryInterface`, `MySqlCustomerRepository`,
 `InMemoryCustomerRepository`, `CustomerService`, `CustomerController`)
 adalah kelas-kelas terpisah dengan nama tabel (`customers`) dan pesan
@@ -329,10 +334,10 @@ classDiagram
     }
 
     class SupplierController {
-        +const ALLOWED_PER_PAGE
-        +const ALLOWED_SORT_COLUMNS
-        +const STATUS_FILTERS
-        +const STATUS_MESSAGES
+        -const ALLOWED_PER_PAGE
+        -const ALLOWED_SORT_COLUMNS
+        -const STATUS_FILTERS
+        -const STATUS_MESSAGES
         -SupplierService supplierService
         -AuthGuard guard
         +index() void
@@ -356,7 +361,7 @@ classDiagram
     note for SupplierRepositoryInterface "Field tambahan `address` (dan search 3 kolom:\nname/contact/address) dibanding Warehouse yang\ncuma 2 kolom (name/location) - satu-satunya\nperbedaan struktural nyata dari Diagram D."
 ```
 
-## Diagram F - Master Data: Produk & Stok (PRD-01 CRUD dasar, WH-01)
+## Diagram F - Master Data: Produk & Stok (PRD-01 termasuk upload gambar, WH-01, FIND-01 filter status stok)
 
 ```mermaid
 classDiagram
@@ -380,9 +385,10 @@ classDiagram
         +findById(int id) Product?
         +findBySku(string sku) Product?
         +save(Product product) Product
-        +listAll(string? search, int? categoryId, bool? isActive, int limit, int offset, string sortBy, string sortDir) Product[]
-        +countAll(string? search, int? categoryId, bool? isActive) int
+        +listAll(string? search, int? categoryId, bool? isActive, string? stockStatus, int limit, int offset, string sortBy, string sortDir) Product[]
+        +countAll(string? search, int? categoryId, bool? isActive, string? stockStatus) int
         +setActive(int id, bool isActive) void
+        +sumInventoryValue() float
     }
     class MySqlProductRepository {
         -PDO pdo
@@ -393,23 +399,32 @@ classDiagram
 
     class ProductService {
         +const PER_PAGE = 10
+        -const MAX_IMAGE_SIZE_BYTES
+        -const ALLOWED_IMAGE_MIME_TYPES
         -ProductRepositoryInterface products
         -CategoryRepositoryInterface categories
-        +listProducts(string? search, int? categoryId, bool? isActive, int page, int perPage, string sortBy, string sortDir) Product[]
-        +countProducts(string? search, int? categoryId, bool? isActive) int
+        +listProducts(string? search, int? categoryId, bool? isActive, string? stockStatus, int page, int perPage, string sortBy, string sortDir) Product[]
+        +countProducts(string? search, int? categoryId, bool? isActive, string? stockStatus) int
         +getProductById(int id) Product
+        +getProductBySku(string sku) Product
         +createProduct(array input) Product
         +updateProduct(int id, array input) Product
         +setActive(int id, bool isActive) void
         -validate(array input, int? excludeId) array
+        -validateImage(array? file) array
+        -storeImage(array? image) string?
+        -deleteImageFile(string imagePath) void
+        -uploadDir() string
     }
 
     class ProductController {
-        +const CATEGORY_DROPDOWN_LIMIT
-        +const ALLOWED_PER_PAGE
-        +const ALLOWED_SORT_COLUMNS
-        +const STATUS_FILTERS
-        +const STATUS_MESSAGES
+        -const CATEGORY_DROPDOWN_LIMIT
+        -const ALLOWED_PER_PAGE
+        -const ALLOWED_SORT_COLUMNS
+        -const STATUS_FILTERS
+        -const STOCK_STATUS_FILTERS
+        -const LIST_URL
+        -const STATUS_MESSAGES
         -ProductService productService
         -CategoryService categoryService
         -StockService stockService
@@ -439,7 +454,7 @@ classDiagram
         -ProductStock[] rows
     }
     class StockService {
-        +const WAREHOUSE_LIMIT
+        -const WAREHOUSE_LIMIT
         -ProductStockRepositoryInterface stockRepository
         -WarehouseRepositoryInterface warehouseRepository
         +getStockSummary(int productId) array
@@ -467,7 +482,7 @@ classDiagram
     note for StockService "getStockSummary() gabungkan seluruh gudang AKTIF\n(WarehouseRepositoryInterface::listAll) dengan baris\nproduct_stock yang ada (left-join di memori, bukan\nSQL) - gudang tanpa baris dianggap quantity 0. Karena\nPO-01 belum dibangun saat modul ini ditulis, seluruh\nproduk otomatis quantity 0 - membuktikan alur BACA\nbenar dulu, sebelum jalur TULIS (goods receipt) ada."
 ```
 
-Catatan tambahan (di luar diagram): brief §2 eksplisit meminta upload gambar (`imagePath`) dan filter status stok (FIND-01) ditunda sampai "alur transaksi inti stabil" - `Product.imagePath` sudah ada di entity/schema tapi belum ada jalur upload/validasi file, dan `ProductController::index()` belum punya filter `status_stok`. Dicatat sebagai keterbatasan disengaja di `docs/quality/tech-debt.md` #5, bukan celah yang terlewat.
+Catatan tambahan (di luar diagram): brief §2 eksplisit meminta upload gambar (`imagePath`) dan filter status stok (FIND-01) ditunda sampai "alur transaksi inti stabil" - keduanya memang baru dikerjakan setelah PO-01 dan SO-01 selesai (tech-debt #5, kini ditutup). Sekarang `ProductService` punya `validateImage()`/`storeImage()` (validasi MIME lewat `finfo` - bukan ekstensi atau `Content-Type` kiriman klien - batas ukuran, dan nama file acak `bin2hex(random_bytes(16))` sesuai PRD-01), dan `ProductController::index()` punya filter `status_stok` lewat konstanta `STOCK_STATUS_FILTERS` yang dipetakan ke agregasi `HAVING` di `MySqlProductRepository` (low stock/normal, FIND-01).
 
 **`ProductAvailabilityApiController` (API-01, ditambahkan 2026-09-18)** - persis seperti dirancang di `docs/planning/class-diagram-initial.md` Diagram 3: controller JSON terpisah (`GET /api/products/{sku}/availability`), constructor injection `ProductService` + `StockService` (dua-duanya konkret, sama seperti Controller HTML lain) + `AuthGuard`. Method `availability(string sku)`: `ProductService::getProductBySku()` (method baru, resolve SKU dari URL, lempar `NotFoundException` kalau tidak ada) lalu `StockService::getStockSummary()` yang SAMA dipakai halaman HTML `products/show.php` - membuktikan alur JSON dan HTML berbagi business logic, bukan implementasi paralel yang bisa berbeda hasilnya. Autentikasi tetap lewat `AuthGuard::requireLogin()` yang sama; yang beda cuma format response error-nya (401/403/404/500 JSON, bukan redirect/halaman HTML) - dicek lewat satu prefix check (`str_starts_with($path, '/api/')`) di `public/index.php`, bukan logic terpisah di tiap Controller.
 
@@ -576,8 +591,8 @@ classDiagram
     }
 
     class PurchaseOrderController {
-        +const STATUS_FILTERS
-        +const STATUS_MESSAGES
+        -const STATUS_FILTERS
+        -const STATUS_MESSAGES
         -PurchaseOrderService purchaseOrderService
         -GoodsReceiptService goodsReceiptService
         -SupplierService supplierService
@@ -662,10 +677,10 @@ classDiagram
     }
 
     class UserController {
-        +const ALLOWED_PER_PAGE
-        +const ALLOWED_SORT_COLUMNS
-        +const STATUS_FILTERS
-        +const STATUS_MESSAGES
+        -const ALLOWED_PER_PAGE
+        -const ALLOWED_SORT_COLUMNS
+        -const STATUS_FILTERS
+        -const STATUS_MESSAGES
         -UserService userService
         -AuthGuard guard
         +index() void
@@ -764,9 +779,9 @@ classDiagram
     }
 
     class SalesOrderController {
-        +const CREATE_ROLES
-        +const STATUS_FILTERS
-        +const STATUS_MESSAGES
+        -const CREATE_ROLES
+        -const STATUS_FILTERS
+        -const STATUS_MESSAGES
         -SalesOrderService salesOrderService
         -GoodsIssueService goodsIssueService
         -CustomerService customerService
@@ -849,7 +864,7 @@ classDiagram
     }
 
     class ReportController {
-        +const DEFAULT_RANGE_DAYS = 30
+        -const DEFAULT_RANGE_DAYS = 30
         -ReportService reportService
         -AuthGuard guard
         +index() void
