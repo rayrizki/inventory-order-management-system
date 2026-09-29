@@ -12,6 +12,8 @@ use App\Repository\CategoryRepositoryInterface;
 
 final class CategoryService
 {
+    use NormalizesSearchTerm;
+
     public const PER_PAGE = 10;
 
     public function __construct(private readonly CategoryRepositoryInterface $categories)
@@ -37,13 +39,6 @@ final class CategoryService
     public function countCategories(?string $search = null): int
     {
         return $this->categories->countAll($this->normalizeSearch($search));
-    }
-
-    private function normalizeSearch(?string $search): ?string
-    {
-        $search = trim((string) $search);
-
-        return $search === '' ? null : $search;
     }
 
     public function getCategoryById(int $id): Category

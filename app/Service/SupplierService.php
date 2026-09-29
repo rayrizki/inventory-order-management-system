@@ -11,6 +11,8 @@ use App\Repository\SupplierRepositoryInterface;
 
 final class SupplierService
 {
+    use NormalizesSearchTerm;
+
     public const PER_PAGE = 10;
 
     public function __construct(private readonly SupplierRepositoryInterface $suppliers)
@@ -95,12 +97,5 @@ final class SupplierService
         $trimmed = trim((string) $value);
 
         return $trimmed === '' ? null : $trimmed;
-    }
-
-    private function normalizeSearch(?string $search): ?string
-    {
-        $search = trim((string) $search);
-
-        return $search === '' ? null : $search;
     }
 }

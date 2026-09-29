@@ -12,6 +12,8 @@ use App\Repository\ProductRepositoryInterface;
 
 final class ProductService
 {
+    use NormalizesSearchTerm;
+
     public const PER_PAGE = 10;
 
     /** PRD-01: ukuran maksimum gambar produk yang diunggah. */
@@ -286,12 +288,5 @@ final class ProductService
     private function uploadDir(): string
     {
         return __DIR__ . '/../../public/uploads/products';
-    }
-
-    private function normalizeSearch(?string $search): ?string
-    {
-        $search = trim((string) $search);
-
-        return $search === '' ? null : $search;
     }
 }

@@ -11,6 +11,8 @@ use App\Repository\CustomerRepositoryInterface;
 
 final class CustomerService
 {
+    use NormalizesSearchTerm;
+
     public const PER_PAGE = 10;
 
     public function __construct(private readonly CustomerRepositoryInterface $customers)
@@ -95,12 +97,5 @@ final class CustomerService
         $trimmed = trim((string) $value);
 
         return $trimmed === '' ? null : $trimmed;
-    }
-
-    private function normalizeSearch(?string $search): ?string
-    {
-        $search = trim((string) $search);
-
-        return $search === '' ? null : $search;
     }
 }

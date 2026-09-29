@@ -11,6 +11,8 @@ use App\Repository\WarehouseRepositoryInterface;
 
 final class WarehouseService
 {
+    use NormalizesSearchTerm;
+
     public const PER_PAGE = 10;
 
     public function __construct(private readonly WarehouseRepositoryInterface $warehouses)
@@ -83,12 +85,5 @@ final class WarehouseService
         $trimmed = trim((string) $location);
 
         return $trimmed === '' ? null : $trimmed;
-    }
-
-    private function normalizeSearch(?string $search): ?string
-    {
-        $search = trim((string) $search);
-
-        return $search === '' ? null : $search;
     }
 }

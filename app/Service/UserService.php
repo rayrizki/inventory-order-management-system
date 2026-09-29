@@ -12,6 +12,8 @@ use App\Repository\UserRepositoryInterface;
 
 final class UserService
 {
+    use NormalizesSearchTerm;
+
     public const PER_PAGE = 10;
 
     /**
@@ -156,12 +158,5 @@ final class UserService
             'password' => $password,
             'role' => $role,
         ];
-    }
-
-    private function normalizeSearch(?string $search): ?string
-    {
-        $search = trim((string) $search);
-
-        return $search === '' ? null : $search;
     }
 }

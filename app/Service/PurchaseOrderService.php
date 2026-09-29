@@ -18,6 +18,10 @@ use DateTime;
 
 final class PurchaseOrderService
 {
+    use NormalizesSearchTerm {
+        normalizeSearch as private normalizeSearchTerm;
+    }
+
     public const PER_PAGE = 10;
 
     /**
@@ -243,6 +247,6 @@ final class PurchaseOrderService
             $search = substr($search, strlen($prefix));
         }
 
-        return $search === '' ? null : $search;
+        return $this->normalizeSearchTerm($search);
     }
 }

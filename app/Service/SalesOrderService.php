@@ -25,6 +25,10 @@ use App\Repository\WarehouseRepositoryInterface;
  */
 final class SalesOrderService
 {
+    use NormalizesSearchTerm {
+        normalizeSearch as private normalizeSearchTerm;
+    }
+
     public const PER_PAGE = 10;
 
     /**
@@ -254,6 +258,6 @@ final class SalesOrderService
             $search = substr($search, strlen($prefix));
         }
 
-        return $search === '' ? null : $search;
+        return $this->normalizeSearchTerm($search);
     }
 }
