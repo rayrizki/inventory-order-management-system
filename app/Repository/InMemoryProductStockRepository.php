@@ -23,6 +23,21 @@ final class InMemoryProductStockRepository implements ProductStockRepositoryInte
         ));
     }
 
+    public function totalQuantityByProducts(array $productIds): array
+    {
+        $totals = [];
+
+        foreach ($this->rows as $row) {
+            if (!in_array($row->productId, $productIds, true)) {
+                continue;
+            }
+
+            $totals[$row->productId] = ($totals[$row->productId] ?? 0) + $row->quantity;
+        }
+
+        return $totals;
+    }
+
     public function incrementQuantity(int $productId, int $warehouseId, int $delta): void
     {
         foreach ($this->rows as $index => $row) {

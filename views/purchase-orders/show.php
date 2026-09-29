@@ -25,8 +25,13 @@ $statusBadges = [
 ];
 [$statusClass, $statusLabel] = $statusBadges[$purchaseOrder->status->value];
 
-$canCancel = in_array($purchaseOrder->status, [\App\Entity\PurchaseOrderStatus::Draft, \App\Entity\PurchaseOrderStatus::Ordered, \App\Entity\PurchaseOrderStatus::PartiallyReceived], true);
-$canMarkOrdered = $purchaseOrder->status === \App\Entity\PurchaseOrderStatus::Draft;
+// Mengajukan PO ke supplier dan membatalkannya adalah keputusan komersial,
+// bukan bagian dari "mengusulkan" yang §1.2 berikan ke Warehouse Staff -
+// server sudah membatasinya ke Admin (PurchaseOrderController::COMMIT_ROLES),
+// tombolnya ikut disembunyikan supaya tidak menawarkan aksi yang pasti 403.
+$isAdmin = $currentUser->role === \App\Entity\Role::Admin;
+$canCancel = $isAdmin && in_array($purchaseOrder->status, [\App\Entity\PurchaseOrderStatus::Draft, \App\Entity\PurchaseOrderStatus::Ordered, \App\Entity\PurchaseOrderStatus::PartiallyReceived], true);
+$canMarkOrdered = $isAdmin && $purchaseOrder->status === \App\Entity\PurchaseOrderStatus::Draft;
 $canReceive = in_array($purchaseOrder->status, [\App\Entity\PurchaseOrderStatus::Ordered, \App\Entity\PurchaseOrderStatus::PartiallyReceived], true);
 ?>
             <div class="page-header">

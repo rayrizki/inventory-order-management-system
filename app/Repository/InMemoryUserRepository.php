@@ -23,7 +23,13 @@ final class InMemoryUserRepository implements UserRepositoryInterface
     public function findByEmail(string $email): ?User
     {
         foreach ($this->users as $user) {
-            if ($user->email === $email) {
+            // strcasecmp, bukan ===: kolom users.email memakai collation
+            // utf8mb4 bawaan MySQL 8 yang TIDAK membedakan huruf besar/kecil,
+            // dan unique key-nya ikut aturan itu. Fake yang case-sensitive
+            // akan meloloskan "Admin@iom.test" saat "admin@iom.test" sudah
+            // ada - unit test hijau, lalu INSERT sungguhan gagal di produksi.
+            // Pola yang sama sudah dipakai InMemoryProductRepository::findBySku().
+            if (strcasecmp($user->email, $email) === 0) {
                 return $user;
             }
         }

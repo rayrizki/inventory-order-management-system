@@ -25,6 +25,27 @@ final class StockService
     }
 
     /**
+     * Total stok untuk sekumpulan produk sekaligus (satu query), dipakai
+     * daftar Produk agar angka yang mendasari filter status stok FIND-01
+     * ikut terlihat di tabel - bukan cuma jadi kriteria tersembunyi.
+     *
+     * @param int[] $productIds
+     * @return array<int, int> productId => total; produk tanpa baris stok
+     *     tetap muncul dengan nilai 0, supaya pemanggil tidak perlu
+     *     membedakan "belum ada baris" dari "stoknya nol".
+     */
+    public function getTotalsForProducts(array $productIds): array
+    {
+        $totals = $this->stockRepository->totalQuantityByProducts($productIds);
+
+        foreach ($productIds as $productId) {
+            $totals[$productId] ??= 0;
+        }
+
+        return $totals;
+    }
+
+    /**
      * @return array{total: int, warehouses: list<array{warehouseId: int, warehouseName: string, quantity: int}>}
      */
     public function getStockSummary(int $productId): array

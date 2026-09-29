@@ -24,8 +24,22 @@ final class PurchaseOrderController
 
     private const ALLOWED_PER_PAGE = [5, 10, 25, 50, 100];
 
-    /** §1.2: Admin dan Warehouse Staff boleh membuat/memproses PO; Sales tidak sama sekali. */
+    /**
+     * §1.2 "Membuat Purchase Order": Admin "Boleh", Warehouse Staff "Boleh
+     * mengusulkan", Sales tidak sama sekali. Melihat daftar/detail, membuat
+     * draf, dan memproses goods receipt ("Memproses goods receipt (PO)":
+     * Warehouse Staff "Boleh") masuk ke sini.
+     */
     private const ALLOWED_ROLES = [Role::Admin, Role::WarehouseStaff];
+
+    /**
+     * Mengikat PO ke supplier (Draft -> Ordered) dan membatalkannya bukan
+     * bagian dari "mengusulkan" - itu keputusan komersial yang menjadikan PO
+     * sebagai komitmen. Dibatasi ke Admin supaya yang mengusulkan dan yang
+     * memutuskan tidak bisa orang yang sama, sejalan dengan pemisahan yang
+     * sama pada Sales Order (pembuat tidak boleh menyetujui).
+     */
+    private const COMMIT_ROLES = [Role::Admin];
 
     private const STATUS_FILTERS = [
         'draft' => PurchaseOrderStatus::Draft,
@@ -143,7 +157,7 @@ final class PurchaseOrderController
 
     public function markOrdered(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), self::ALLOWED_ROLES);
+        $this->guard->requireRole($this->guard->requireLogin(), self::COMMIT_ROLES);
 
         try {
             $this->purchaseOrderService->markOrdered((int) $id);
@@ -156,7 +170,7 @@ final class PurchaseOrderController
 
     public function cancel(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), self::ALLOWED_ROLES);
+        $this->guard->requireRole($this->guard->requireLogin(), self::COMMIT_ROLES);
 
         try {
             $this->purchaseOrderService->cancel((int) $id);

@@ -77,6 +77,24 @@ final class UserServiceTest extends TestCase
         $service->createUser($this->validInput());
     }
 
+    /**
+     * Kolom users.email memakai collation MySQL yang tidak membedakan huruf
+     * besar/kecil, jadi duplikat harus ditolak Service SEBELUM sampai ke
+     * unique key - kalau tidak, user melihat 500 mentah alih-alih pesan
+     * validasi yang jelas.
+     */
+    public function testCreateUserRejectsDuplicateEmailDifferingOnlyByLetterCase(): void
+    {
+        $users = new InMemoryUserRepository([
+            new User(1, 'Existing', 'sales.baru@iom.test', password_hash('x', PASSWORD_DEFAULT), Role::Sales, true),
+        ]);
+        $service = new UserService($users);
+
+        $this->expectException(ValidationException::class);
+
+        $service->createUser($this->validInput(['email' => 'Sales.Baru@IOM.test']));
+    }
+
     public function testCreateUserRejectsPasswordShorterThanEightChars(): void
     {
         $service = new UserService(new InMemoryUserRepository());

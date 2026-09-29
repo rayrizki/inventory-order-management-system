@@ -14,6 +14,18 @@ interface ProductStockRepositoryInterface
     public function findByProduct(int $productId): array;
 
     /**
+     * Total stok (dijumlah lintas gudang) untuk beberapa produk sekaligus -
+     * satu query GROUP BY, bukan findByProduct() per baris daftar (N+1).
+     * Dipakai daftar Produk supaya angka stok dan status low/normal yang
+     * jadi dasar filter FIND-01 benar-benar terlihat di tabel.
+     *
+     * @param int[] $productIds
+     * @return array<int, int> productId => total quantity; produk yang belum
+     *     punya baris stok sama sekali tidak muncul di hasil (anggap 0).
+     */
+    public function totalQuantityByProducts(array $productIds): array;
+
+    /**
      * Upsert atomik (INSERT ... ON DUPLICATE KEY UPDATE) - baris belum tentu
      * ada sebelum goods receipt pertama untuk kombinasi produk+gudang itu.
      * Dipanggil GoodsReceiptService (PO-01) di dalam transaksi yang sama

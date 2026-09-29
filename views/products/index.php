@@ -240,6 +240,7 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                                 <th>Harga Beli</th>
                                 <th>Harga Jual</th>
                                 <th>Reorder Point</th>
+                                <th>Stok</th>
                                 <th>Status</th>
                                 <th>Aksi</th>
                             </tr>
@@ -261,6 +262,16 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                                 <td class="text-muted"><?= htmlspecialchars($formatRupiah($product->buyPrice)) ?></td>
                                 <td class="text-muted"><?= htmlspecialchars($formatRupiah($product->sellPrice)) ?></td>
                                 <td class="text-muted"><?= $product->reorderPoint ?></td>
+                                <?php
+                                    $stokTotal = $stockTotals[$product->id] ?? 0;
+                                    $stokRendah = $stokTotal < $product->reorderPoint;
+                                ?>
+                                <td>
+                                    <?= $stokTotal ?>
+                                    <?php if ($stokRendah): ?>
+                                        <span class="badge badge-warning">Stok Rendah</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <?php if ($product->isActive): ?>
                                         <span class="badge badge-success">Aktif</span>

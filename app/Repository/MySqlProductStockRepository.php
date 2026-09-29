@@ -23,6 +23,37 @@ final class MySqlProductStockRepository implements ProductStockRepositoryInterfa
         return array_map($this->hydrate(...), $statement->fetchAll());
     }
 
+    public function totalQuantityByProducts(array $productIds): array
+    {
+        if ($productIds === []) {
+            return [];
+        }
+
+        // Placeholder dibuat sebanyak id yang diminta - jumlahnya berasal
+        // dari hasil query daftar produk (maksimal satu halaman), bukan dari
+        // input user mentah, dan setiap nilainya tetap di-bind.
+        $placeholders = [];
+        $params = [];
+        foreach (array_values($productIds) as $index => $productId) {
+            $placeholders[] = ":product_$index";
+            $params["product_$index"] = $productId;
+        }
+
+        $statement = $this->pdo->prepare(sprintf(
+            'SELECT product_id, SUM(quantity) AS total FROM product_stock
+             WHERE product_id IN (%s) GROUP BY product_id',
+            implode(', ', $placeholders),
+        ));
+        $statement->execute($params);
+
+        $totals = [];
+        foreach ($statement->fetchAll() as $row) {
+            $totals[(int) $row['product_id']] = (int) $row['total'];
+        }
+
+        return $totals;
+    }
+
     public function incrementQuantity(int $productId, int $warehouseId, int $delta): void
     {
         $statement = $this->pdo->prepare(

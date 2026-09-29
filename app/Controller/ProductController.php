@@ -107,6 +107,13 @@ final class ProductController
         foreach ($categories as $category) {
             $categoryNames[$category->id] = $category->name;
         }
+        // Angka stok untuk baris yang sedang tampil - satu query untuk satu
+        // halaman, bukan per produk. Tanpa ini filter "status stok" bekerja
+        // benar tapi hasilnya terlihat seperti tidak berubah, karena tabel
+        // tidak menampilkan angka yang jadi dasar penyaringan.
+        $stockTotals = $this->stockService->getTotalsForProducts(
+            array_map(static fn ($product): int => (int) $product->id, $products)
+        );
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
         require __DIR__ . '/../../views/products/index.php';
