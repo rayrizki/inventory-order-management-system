@@ -179,7 +179,7 @@ $statusBadge = static function (\App\Entity\SalesOrderStatus $status): string {
                         <tbody>
                             <?php foreach ($salesOrders as $salesOrder): ?>
                             <tr>
-                                <td>SO-<?= str_pad((string) $salesOrder->id, 6, '0', STR_PAD_LEFT) ?></td>
+                                <td><?= htmlspecialchars($salesOrder->number()) ?></td>
                                 <td class="text-muted"><?= htmlspecialchars($customerNames[$salesOrder->customerId] ?? '-') ?></td>
                                 <td class="text-muted"><?= htmlspecialchars((string) $salesOrder->createdAt) ?></td>
                                 <td><?= $statusBadge($salesOrder->status) ?></td>

@@ -49,7 +49,10 @@ $navGroups = [
         'sales-orders' => ['label' => 'Sales Order', 'href' => '/sales-orders'],
     ],
     'Laporan' => [
-        'reports' => ['label' => 'Laporan', 'href' => '/reports', 'roles' => [\App\Entity\Role::Admin]],
+        // §1.2 memberi ketiga role hak unduh CSV yang berbeda (Admin semua,
+        // Sales order miliknya, Warehouse Staff laporan stok) - halamannya
+        // terbuka untuk semua, isinya yang menyesuaikan per role.
+        'reports' => ['label' => 'Laporan', 'href' => '/reports', 'roles' => [\App\Entity\Role::Admin, \App\Entity\Role::Sales, \App\Entity\Role::WarehouseStaff]],
     ],
     'Administrasi' => [
         'users' => ['label' => 'User', 'href' => '/users'],

@@ -241,9 +241,18 @@ final class SalesOrderService
         ];
     }
 
+    /**
+     * Membuang awalan "SO-" kalau user mengetik nomor persis seperti yang
+     * tampil di layar - lihat PurchaseOrderService::normalizeSearch().
+     */
     private function normalizeSearch(?string $search): ?string
     {
         $search = trim((string) $search);
+        $prefix = SalesOrder::NUMBER_PREFIX;
+
+        if (stripos($search, $prefix) === 0) {
+            $search = substr($search, strlen($prefix));
+        }
 
         return $search === '' ? null : $search;
     }

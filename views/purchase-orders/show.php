@@ -9,7 +9,7 @@
  * @var array<string, string> $receiptErrors
  * @var string $csrfToken
  */
-$pageTitle = 'PO-' . str_pad((string) $purchaseOrder->id, 6, '0', STR_PAD_LEFT);
+$pageTitle = $purchaseOrder->number();
 $activeNav = 'purchase-orders';
 require __DIR__ . '/../layout/shell-start.php';
 
@@ -47,7 +47,7 @@ $canReceive = in_array($purchaseOrder->status, [\App\Entity\PurchaseOrderStatus:
                         </form>
                     <?php endif; ?>
                     <?php if ($canCancel): ?>
-                        <form method="post" action="/purchase-orders/<?= $purchaseOrder->id ?>/cancel" data-confirm="Batalkan PO-<?= str_pad((string) $purchaseOrder->id, 6, '0', STR_PAD_LEFT) ?>? Aksi ini tidak bisa dibatalkan.">
+                        <form method="post" action="/purchase-orders/<?= $purchaseOrder->id ?>/cancel" data-confirm="Batalkan <?= htmlspecialchars($purchaseOrder->number()) ?>? Aksi ini tidak bisa dibatalkan.">
                             <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                             <button type="submit" class="btn btn-secondary">Batalkan PO</button>
                         </form>

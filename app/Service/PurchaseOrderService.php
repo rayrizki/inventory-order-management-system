@@ -228,9 +228,20 @@ final class PurchaseOrderService
         return $parsed !== false && $parsed->format('Y-m-d') === $date;
     }
 
+    /**
+     * Membuang awalan "PO-" kalau user mengetik nomor persis seperti yang
+     * tampil di layar (PO-000012) - sisanya ("000012") tetap cocok dengan
+     * pencocokan nomor ber-padding di repository, sekaligus masih cocok
+     * untuk pencarian id mentah ("12") maupun nama supplier.
+     */
     private function normalizeSearch(?string $search): ?string
     {
         $search = trim((string) $search);
+        $prefix = PurchaseOrder::NUMBER_PREFIX;
+
+        if (stripos($search, $prefix) === 0) {
+            $search = substr($search, strlen($prefix));
+        }
 
         return $search === '' ? null : $search;
     }

@@ -10,7 +10,7 @@
  * @var string $csrfToken
  * @var \App\Session\CurrentUser $currentUser Disediakan shell-start.php.
  */
-$pageTitle = 'SO-' . str_pad((string) $salesOrder->id, 6, '0', STR_PAD_LEFT);
+$pageTitle = $salesOrder->number();
 $activeNav = 'sales-orders';
 require __DIR__ . '/../layout/shell-start.php';
 
@@ -67,7 +67,7 @@ foreach ($salesOrder->items as $item) {
                         </form>
                     <?php endif; ?>
                     <?php if ($canCancel): ?>
-                        <form method="post" action="/sales-orders/<?= $salesOrder->id ?>/cancel" data-confirm="Batalkan SO-<?= str_pad((string) $salesOrder->id, 6, '0', STR_PAD_LEFT) ?>? Aksi ini tidak bisa dibatalkan.">
+                        <form method="post" action="/sales-orders/<?= $salesOrder->id ?>/cancel" data-confirm="Batalkan <?= htmlspecialchars($salesOrder->number()) ?>? Aksi ini tidak bisa dibatalkan.">
                             <input type="hidden" name="_csrf_token" value="<?= htmlspecialchars($csrfToken) ?>">
                             <button type="submit" class="btn btn-secondary">Batalkan SO</button>
                         </form>

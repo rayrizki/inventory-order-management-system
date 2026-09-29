@@ -207,10 +207,15 @@ final class MySqlSalesOrderRepository implements SalesOrderRepositoryInterface
         $params = [];
 
         if ($search !== null && $search !== '') {
-            // FIND-01: "pencarian nomor/pihak terkait" - nomor SO (id) atau
-            // nama customer. Dua placeholder terpisah (native prepares).
-            $conditions[] = '(CAST(so.id AS CHAR) LIKE :search_id OR c.name LIKE :search_customer)';
+            // FIND-01: "pencarian nomor/pihak terkait" - nomor SO atau nama
+            // customer. LPAD mencocokkan nomor seperti yang TAMPIL di layar
+            // (SO-000012, lihat SalesOrder::number()); CAST tetap melayani
+            // pencarian id apa adanya. Placeholder terpisah per kondisi
+            // (native prepares).
+            $conditions[] = '(CAST(so.id AS CHAR) LIKE :search_id OR LPAD(so.id, :number_digits, \'0\') LIKE :search_number OR c.name LIKE :search_customer)';
             $params['search_id'] = '%' . $search . '%';
+            $params['search_number'] = '%' . $search . '%';
+            $params['number_digits'] = SalesOrder::NUMBER_DIGITS;
             $params['search_customer'] = '%' . $search . '%';
         }
 

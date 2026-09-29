@@ -177,7 +177,7 @@ $statusBadge = static function (\App\Entity\PurchaseOrderStatus $status): string
                         <tbody>
                             <?php foreach ($purchaseOrders as $purchaseOrder): ?>
                             <tr>
-                                <td>PO-<?= str_pad((string) $purchaseOrder->id, 6, '0', STR_PAD_LEFT) ?></td>
+                                <td><?= htmlspecialchars($purchaseOrder->number()) ?></td>
                                 <td class="text-muted"><?= htmlspecialchars($supplierNames[$purchaseOrder->supplierId] ?? '-') ?></td>
                                 <td class="text-muted"><?= htmlspecialchars($purchaseOrder->orderDate) ?></td>
                                 <td><?= $statusBadge($purchaseOrder->status) ?></td>

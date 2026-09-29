@@ -20,4 +20,17 @@ final class SalesOrder
         public readonly array $items,
     ) {
     }
+
+    /**
+     * Nomor SO seperti yang dilihat user (SO-000012) - lihat alasan lengkap
+     * di PurchaseOrder::number().
+     */
+    public const NUMBER_PREFIX = 'SO-';
+
+    public const NUMBER_DIGITS = 6;
+
+    public function number(): string
+    {
+        return self::NUMBER_PREFIX . str_pad((string) $this->id, self::NUMBER_DIGITS, '0', STR_PAD_LEFT);
+    }
 }

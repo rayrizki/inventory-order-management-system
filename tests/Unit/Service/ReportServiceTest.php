@@ -70,9 +70,9 @@ final class ReportServiceTest extends TestCase
         self::assertSame('Warehouse Satu', $rows[0]['dilakukan_oleh']);
     }
 
-    public function testStockLedgerReportFallsBackToDashWhenLookupMisses(): void
+    public function testStockLedgerReportFallsBackToBlankWhenLookupMisses(): void
     {
-        // productId 999 tidak ada di lookup - harus tampil "-", bukan crash.
+        // productId 999 tidak ada di lookup - sel dikosongkan, bukan crash.
         $ledger = new InMemoryStockLedgerRepository([
             new StockLedgerEntry(1, 999, 1, StockMovementType::Adjustment, 5, 'manual', 1, 999, '2026-09-05 10:00:00'),
         ]);
@@ -80,8 +80,8 @@ final class ReportServiceTest extends TestCase
 
         $rows = $service->getStockLedgerReport('2026-09-01', '2026-09-10');
 
-        self::assertSame('-', $rows[0]['sku']);
-        self::assertSame('-', $rows[0]['dilakukan_oleh']);
+        self::assertSame('', $rows[0]['sku']);
+        self::assertSame('', $rows[0]['dilakukan_oleh']);
     }
 
     public function testOrdersReportCombinesPurchaseAndSalesOrdersSortedByDate(): void
@@ -109,7 +109,29 @@ final class ReportServiceTest extends TestCase
         self::assertSame('PO-000001', $rows[1]['nomor']);
         self::assertSame('Supplier Satu', $rows[1]['pihak_terkait']);
         self::assertSame('Ordered', $rows[1]['status']);
-        self::assertSame('-', $rows[1]['disetujui_oleh'], 'PO tidak punya konsep approved_by - selalu "-"');
+        self::assertSame('', $rows[1]['disetujui_oleh'], 'PO tidak punya konsep approved_by - selnya dikosongkan');
+    }
+
+    /**
+     * §1.2: Sales hanya boleh mengunduh "order miliknya" - Purchase Order
+     * tidak termasuk sama sekali, dan Sales Order milik orang lain disaring.
+     */
+    public function testOrdersReportScopedToOneCreatorExcludesPurchaseOrdersAndOtherPeoplesOrders(): void
+    {
+        $purchaseOrders = new InMemoryPurchaseOrderRepository([
+            new PurchaseOrder(1, 1, 1, PurchaseOrderStatus::Ordered, '2026-09-05', 1, [new PurchaseOrderItem(1, 1, 1, 5, 10000, 0)]),
+        ]);
+        $salesOrders = new InMemorySalesOrderRepository([
+            new SalesOrder(1, 1, 1, SalesOrderStatus::Approved, 2, 1, '2026-09-03 08:00:00', [new SalesOrderItem(1, 1, 1, 5, 15000)]),
+            new SalesOrder(2, 1, 1, SalesOrderStatus::Draft, 3, null, '2026-09-04 08:00:00', [new SalesOrderItem(2, 2, 1, 5, 15000)]),
+        ]);
+        $service = $this->makeService(purchaseOrders: $purchaseOrders, salesOrders: $salesOrders);
+
+        $rows = $service->getOrdersReport('2026-09-01', '2026-09-10', onlyCreatedBy: 2);
+
+        self::assertCount(1, $rows);
+        self::assertSame('Sales Order', $rows[0]['tipe']);
+        self::assertSame('SO-000001', $rows[0]['nomor']);
     }
 
     public function testOrdersReportExcludesOrdersOutsideDateRange(): void

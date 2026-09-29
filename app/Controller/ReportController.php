@@ -10,12 +10,20 @@ use App\Session\AuthGuard;
 use DateTimeImmutable;
 
 /**
- * REPORT-01. Cuma Admin yang boleh mengunduh laporan (brief SS1.2, tabel
- * peran: baris "Mengunduh laporan (CSV)" cuma tercentang di kolom Admin).
+ * REPORT-01. Hak unduh mengikuti baris "Mengunduh laporan (CSV)" pada tabel
+ * peran brief §1.2: Admin boleh keduanya, Sales hanya "order miliknya"
+ * (Purchase Order tidak termasuk, dan Sales Order disaring ke miliknya
+ * sendiri), Warehouse Staff hanya "laporan stok" (pergerakan StockLedger).
  */
 final class ReportController
 {
     private const DEFAULT_RANGE_DAYS = 30;
+
+    /** Siapa yang boleh mengunduh laporan pergerakan stok. */
+    private const STOCK_REPORT_ROLES = [Role::Admin, Role::WarehouseStaff];
+
+    /** Siapa yang boleh mengunduh laporan status order. */
+    private const ORDER_REPORT_ROLES = [Role::Admin, Role::Sales];
 
     public function __construct(
         private readonly ReportService $reportService,
@@ -26,7 +34,12 @@ final class ReportController
     public function index(): void
     {
         $currentUser = $this->guard->requireLogin();
-        $this->guard->requireRole($currentUser, [Role::Admin]);
+
+        // Halaman laporan terbuka untuk semua role yang login; yang berbeda
+        // adalah laporan mana yang ditawarkan - view memakai dua flag ini,
+        // dan tiap endpoint unduh tetap memeriksa sendiri di server.
+        $canDownloadStockReport = in_array($currentUser->role, self::STOCK_REPORT_ROLES, true);
+        $canDownloadOrderReport = in_array($currentUser->role, self::ORDER_REPORT_ROLES, true);
 
         [$from, $to] = $this->resolveDateRange();
 
@@ -36,7 +49,7 @@ final class ReportController
     public function exportStockLedgerCsv(): void
     {
         $currentUser = $this->guard->requireLogin();
-        $this->guard->requireRole($currentUser, [Role::Admin]);
+        $this->guard->requireRole($currentUser, self::STOCK_REPORT_ROLES);
 
         [$from, $to] = $this->resolveDateRange();
         $rows = $this->reportService->getStockLedgerReport($from, $to);
@@ -51,10 +64,14 @@ final class ReportController
     public function exportOrdersCsv(): void
     {
         $currentUser = $this->guard->requireLogin();
-        $this->guard->requireRole($currentUser, [Role::Admin]);
+        $this->guard->requireRole($currentUser, self::ORDER_REPORT_ROLES);
+
+        // Sales: "order miliknya" - penyaringan dilakukan di server dari id
+        // session, bukan dari parameter yang bisa diubah user.
+        $onlyCreatedBy = $currentUser->role === Role::Sales ? $currentUser->id : null;
 
         [$from, $to] = $this->resolveDateRange();
-        $rows = $this->reportService->getOrdersReport($from, $to);
+        $rows = $this->reportService->getOrdersReport($from, $to, $onlyCreatedBy);
 
         $this->streamCsv(
             "order-status_{$from}_{$to}.csv",
@@ -100,9 +117,25 @@ final class ReportController
         $output = fopen('php://output', 'w');
         fputcsv($output, $header);
         foreach ($rows as $row) {
-            fputcsv($output, array_values($row));
+            fputcsv($output, array_map($this->neutralizeFormula(...), array_values($row)));
         }
         fclose($output);
         exit;
+    }
+
+    /**
+     * Nilai yang diawali = + - @ (juga TAB/CR di depannya) diperlakukan
+     * sebagai rumus oleh Excel/LibreOffice saat CSV dibuka. Karena isi kolom
+     * berasal dari data yang diketik user (nama produk, supplier, customer,
+     * user), satu baris seperti `=cmd|...` bisa berubah jadi rumus hidup di
+     * komputer orang yang membuka laporan. Diawali kutip tunggal supaya
+     * spreadsheet membacanya sebagai teks biasa; nilai yang tidak berbahaya
+     * dibiarkan apa adanya agar laporan tetap enak dibaca.
+     */
+    private function neutralizeFormula(mixed $value): string
+    {
+        $value = (string) $value;
+
+        return preg_match('/^[\t\r]*[=+\-@]/', $value) === 1 ? "'" . $value : $value;
     }
 }

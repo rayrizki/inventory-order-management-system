@@ -32,6 +32,7 @@ require __DIR__ . '/../layout/shell-start.php';
                 <p class="form-hint">Default 30 hari terakhir kalau tidak diisi. Tautan unduh di bawah mengikuti rentang yang sedang diterapkan.</p>
             </div>
 
+            <?php if ($canDownloadStockReport): ?>
             <div class="detail-card">
                 <h2>Pergerakan Stok (Stock Ledger)</h2>
                 <p class="form-hint">Seluruh baris StockLedger (Receipt/Issue/Adjustment) dalam rentang tanggal yang dipilih, termasuk produk, gudang, dan siapa yang memprosesnya.</p>
@@ -45,10 +46,14 @@ require __DIR__ . '/../layout/shell-start.php';
                     <span>Unduh CSV Pergerakan Stok</span>
                 </a>
             </div>
+            <?php endif; ?>
 
+            <?php if ($canDownloadOrderReport): ?>
             <div class="detail-card">
-                <h2>Status Order (Purchase Order &amp; Sales Order)</h2>
-                <p class="form-hint">Gabungan PO dan SO dalam rentang tanggal yang dipilih (PO berdasarkan tanggal order, SO berdasarkan tanggal dibuat), lengkap dengan status dan pihak terkait.</p>
+                <h2>Status Order<?= $currentUser->role === \App\Entity\Role::Sales ? ' (Sales Order Milik Anda)' : ' (Purchase Order &amp; Sales Order)' ?></h2>
+                <p class="form-hint"><?= $currentUser->role === \App\Entity\Role::Sales
+                    ? 'Sales Order yang Anda buat dalam rentang tanggal yang dipilih, lengkap dengan status dan customer terkait.'
+                    : 'Gabungan PO dan SO dalam rentang tanggal yang dipilih (PO berdasarkan tanggal order, SO berdasarkan tanggal dibuat), lengkap dengan status dan pihak terkait.' ?></p>
                 <a
                     href="/reports/orders.csv?<?= http_build_query(['from' => $from, 'to' => $to]) ?>"
                     class="btn btn-primary"
@@ -59,4 +64,5 @@ require __DIR__ . '/../layout/shell-start.php';
                     <span>Unduh CSV Status Order</span>
                 </a>
             </div>
+            <?php endif; ?>
 <?php require __DIR__ . '/../layout/shell-end.php'; ?>

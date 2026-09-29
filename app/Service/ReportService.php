@@ -52,13 +52,13 @@ final class ReportService
         foreach ($this->ledger->listForReport($fromDate, $toDate) as $entry) {
             $rows[] = [
                 'tanggal' => (string) $entry->createdAt,
-                'sku' => $productNames[$entry->productId]['sku'] ?? '-',
-                'produk' => $productNames[$entry->productId]['name'] ?? '-',
-                'gudang' => $warehouseNames[$entry->warehouseId] ?? '-',
+                'sku' => $productNames[$entry->productId]['sku'] ?? '',
+                'produk' => $productNames[$entry->productId]['name'] ?? '',
+                'gudang' => $warehouseNames[$entry->warehouseId] ?? '',
                 'tipe_pergerakan' => $entry->movementType->value,
                 'quantity' => $entry->quantity,
                 'referensi' => $entry->referenceType . ' #' . $entry->referenceId,
-                'dilakukan_oleh' => $userNames[$entry->performedBy] ?? '-',
+                'dilakukan_oleh' => $userNames[$entry->performedBy] ?? '',
             ];
         }
 
@@ -68,34 +68,47 @@ final class ReportService
     /**
      * @return list<array{tipe: string, nomor: string, tanggal: string, pihak_terkait: string, status: string, dibuat_oleh: string, disetujui_oleh: string}>
      */
-    public function getOrdersReport(string $fromDate, string $toDate): array
+    public function getOrdersReport(string $fromDate, string $toDate, ?int $onlyCreatedBy = null): array
     {
         $supplierNames = $this->supplierLookup();
         $customerNames = $this->customerLookup();
         $userNames = $this->userLookup();
 
         $rows = [];
-        foreach ($this->purchaseOrders->listForReport($fromDate, $toDate) as $po) {
-            $rows[] = [
-                'tipe' => 'Purchase Order',
-                'nomor' => 'PO-' . str_pad((string) $po->id, 6, '0', STR_PAD_LEFT),
-                'tanggal' => $po->orderDate,
-                'pihak_terkait' => $supplierNames[$po->supplierId] ?? '-',
-                'status' => $po->status->value,
-                'dibuat_oleh' => $userNames[$po->createdBy] ?? '-',
-                'disetujui_oleh' => '-',
-            ];
+
+        // §1.2: Sales hanya boleh mengunduh "order miliknya". Purchase Order
+        // sama sekali bukan haknya, jadi saat laporan dibatasi per pembuat,
+        // seluruh blok PO dilewati - bukan sekadar disaring.
+        if ($onlyCreatedBy === null) {
+            foreach ($this->purchaseOrders->listForReport($fromDate, $toDate) as $po) {
+                $rows[] = [
+                    'tipe' => 'Purchase Order',
+                    'nomor' => $po->number(),
+                    'tanggal' => $po->orderDate,
+                    'pihak_terkait' => $supplierNames[$po->supplierId] ?? '',
+                    'status' => $po->status->value,
+                    'dibuat_oleh' => $userNames[$po->createdBy] ?? '',
+                    // Kolom kosong, bukan "-": PO memang tidak punya alur
+                    // persetujuan, dan tanda hubung di awal sel akan diawali
+                    // kutip oleh penetral rumus CSV sehingga terbaca "'-".
+                    'disetujui_oleh' => '',
+                ];
+            }
         }
 
         foreach ($this->salesOrders->listForReport($fromDate, $toDate) as $so) {
+            if ($onlyCreatedBy !== null && $so->createdBy !== $onlyCreatedBy) {
+                continue;
+            }
+
             $rows[] = [
                 'tipe' => 'Sales Order',
-                'nomor' => 'SO-' . str_pad((string) $so->id, 6, '0', STR_PAD_LEFT),
+                'nomor' => $so->number(),
                 'tanggal' => (string) $so->createdAt,
-                'pihak_terkait' => $customerNames[$so->customerId] ?? '-',
+                'pihak_terkait' => $customerNames[$so->customerId] ?? '',
                 'status' => $so->status->value,
-                'dibuat_oleh' => $userNames[$so->createdBy] ?? '-',
-                'disetujui_oleh' => $so->approvedBy !== null ? ($userNames[$so->approvedBy] ?? '-') : '-',
+                'dibuat_oleh' => $userNames[$so->createdBy] ?? '',
+                'disetujui_oleh' => $so->approvedBy !== null ? ($userNames[$so->approvedBy] ?? '') : '',
             ];
         }
 

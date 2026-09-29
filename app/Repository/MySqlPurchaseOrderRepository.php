@@ -187,11 +187,18 @@ final class MySqlPurchaseOrderRepository implements PurchaseOrderRepositoryInter
         $params = [];
 
         if ($search !== null && $search !== '') {
-            // FIND-01: "pencarian nomor/pihak terkait" - nomor PO (id) atau
-            // nama supplier. Dua placeholder terpisah (native prepares, lihat
-            // catatan di repository master data lain untuk alasan lengkap).
-            $conditions[] = '(CAST(po.id AS CHAR) LIKE :search_id OR s.name LIKE :search_supplier)';
+            // FIND-01: "pencarian nomor/pihak terkait" - nomor PO atau nama
+            // supplier. LPAD mencocokkan nomor seperti yang TAMPIL di layar
+            // (PO-000012, lihat PurchaseOrder::number(); awalan "PO-" sudah
+            // dibuang PurchaseOrderService::normalizeSearch()), sementara
+            // CAST tetap melayani pencarian id apa adanya ("12"). Tanpa LPAD,
+            // mengetik nomor persis seperti di layar tidak menemukan apa pun.
+            // Placeholder terpisah per kondisi (native prepares, lihat catatan
+            // di repository master data lain untuk alasan lengkap).
+            $conditions[] = '(CAST(po.id AS CHAR) LIKE :search_id OR LPAD(po.id, :number_digits, \'0\') LIKE :search_number OR s.name LIKE :search_supplier)';
             $params['search_id'] = '%' . $search . '%';
+            $params['search_number'] = '%' . $search . '%';
+            $params['number_digits'] = PurchaseOrder::NUMBER_DIGITS;
             $params['search_supplier'] = '%' . $search . '%';
         }
 
