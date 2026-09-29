@@ -23,9 +23,33 @@ tapi PHPStan (menganalisis seluruh `app/`+`tests/` sekaligus di beberapa
 worker paralel) butuh lebih banyak. Ini bukan masalah aplikasi, murni
 kebutuhan tool analisis saat development.
 
-## Hasil (2026-09-18)
+## Hasil (dijalankan ulang 2026-09-29, setelah audit brief)
 
 **Level 6 - 0 critical error.**
+
+Laporan ini sebelumnya bertanggal 2026-09-18, sebelum modul Dashboard dan
+Laporan ditambahkan dan sebelum perbaikan hasil audit (ADR-0007). Dijalankan
+ulang terhadap kode saat ini - tetap `[OK] No errors` di level 6, tanpa satu
+pun `ignoreErrors` di `phpstan.neon` dan tanpa mempersempit `paths`.
+
+### Keterbatasan yang perlu diketahui: `views/` tidak dianalisis
+
+`phpstan.neon` menganalisis `app/`, `public/`, `config/`, dan `tests/` - **tidak
+termasuk `views/`**. Ini bukan kelalaian konfigurasi: file di `views/` adalah
+template PHP yang mengandalkan variabel dari scope pemanggilnya (`require` dari
+Controller), sehingga PHPStan melaporkan setiap variabel view sebagai undefined
+dan laporannya jadi tidak berguna.
+
+Konsekuensinya nyata dan sempat terjadi saat audit: ketika `AuthGuard`
+bertambah satu dependency constructor, `views/layout/shell-start.php` yang
+merakit `AuthGuard` sendiri langsung rusak dan **tiga halaman balas 500,
+sementara PHPStan tetap melaporkan `[OK] No errors`**. Yang menangkapnya
+adalah smoke test HTTP ke seluruh rute GET untuk ketiga role. Pelajarannya
+dicatat di sini supaya jelas: static analysis proyek ini menjamin lapisan
+`app/`, bukan lapisan template - verifikasi template dilakukan lewat
+menjalankan aplikasinya, bukan lewat tool ini. (Penyebab strukturalnya sendiri
+sudah diperbaiki, lihat refactor-log #5: view tidak lagi merakit
+infrastruktur.)
 
 Brief mensyaratkan minimum level 5; proyek ini menjalankan level 6 setelah
 audit menunjukkan hanya 8 error tersisa di level itu (dibanding 64 di level
@@ -41,7 +65,22 @@ dikejar tanpa mengorbankan waktu untuk fitur inti yang belum selesai).
 
 ## Warning yang tersisa (bukan critical error)
 
-Tidak ada. `[OK] No errors` di level 6.
+Tidak ada dari PHPStan. `[OK] No errors` di level 6.
+
+SonarLint (plugin editor, bukan bagian dari pipeline penilaian) masih
+memunculkan dua kategori peringatan yang sengaja tidak ditindaklanjuti:
+
+- **"Remove this unused local variable"** pada Controller yang menyiapkan
+  variabel lalu `require` view (mis. `$products`, `$statusMessage`). Ini
+  false positive: variabel itu memang dipakai, tapi oleh template yang
+  di-`require` ke scope yang sama - analisis per-file tidak bisa melihatnya.
+- **"Refactor this function to reduce its Cognitive Complexity"** pada
+  `validate()` milik `PurchaseOrderService`/`SalesOrderService`. Keduanya
+  memvalidasi header + seluruh baris item sekaligus dan mengumpulkan SEMUA
+  error dalam satu jalan (VAL-01: "input yang sudah diisi dipertahankan"),
+  jadi percabangannya memang banyak tapi linier dan sejenis. Memecahnya
+  menjadi beberapa method kecil hanya memindahkan percabangan itu, bukan
+  menghilangkannya - dicatat di tech-debt daripada direfaktor demi angka.
 
 ## Kenapa tidak PHP_CodeSniffer juga
 

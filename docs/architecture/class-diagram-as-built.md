@@ -57,6 +57,7 @@ classDiagram
 
     class AuthGuard {
         -SessionInterface session
+        -UserRepositoryInterface users
         +requireLogin() CurrentUser
         +requireRole(CurrentUser user, Role[] allowed) void
     }
@@ -77,12 +78,15 @@ classDiagram
 
     SessionInterface <|.. PhpSessionAdapter : implements
     AuthGuard --> SessionInterface : constructor injection (interface)
+    AuthGuard --> UserRepositoryInterface : constructor injection (interface)
     AuthGuard --> CurrentUser : creates
     CurrentUser --> Role
     Router --> CsrfToken : constructor injection (concrete)
     CsrfToken --> SessionInterface : constructor injection (interface)
 
     note for CurrentUser "BEDA dari initial: ada properti `name`\n(initial cuma id+role) - dibutuhkan\nsupaya sidebar bisa menampilkan\nnama user yang login, bukan cuma role"
+
+    note for AuthGuard "Session HANYA menyimpan user_id; nama dan role\ndibaca ulang dari UserRepositoryInterface tiap request.\nSemula ketiganya disimpan di session, sehingga akun yang\ndinonaktifkan Admin tetap berhak penuh sampai ia logout\nsendiri - untuk sistem dengan segregation of duties (SS1.2)\npencabutan akses harus langsung berlaku."
     note for Router "TIDAK ADA di diagram initial sama sekali.\nDitambahkan karena PHP tidak ada routing\nbawaan dan Category/Warehouse/Product\nsemua butuh URL /resource/{id}/edit -\nregex sederhana, tanpa dependency."
     note for CsrfToken "TIDAK ADA di diagram initial (initial dibuat\nsebelum CSRF disadari sebagai celah - lihat\ndocs/quality/tech-debt.md #4). Dicek satu kali\ndi Router::dispatch() untuk semua route POST,\nbukan diulang manual di tiap Controller."
 ```
@@ -446,6 +450,7 @@ classDiagram
     class ProductStockRepositoryInterface {
         <<interface>>
         +findByProduct(int productId) ProductStock[]
+        +totalQuantityByProducts(int[] productIds) array
     }
     class MySqlProductStockRepository {
         -PDO pdo
@@ -458,6 +463,7 @@ classDiagram
         -ProductStockRepositoryInterface stockRepository
         -WarehouseRepositoryInterface warehouseRepository
         +getStockSummary(int productId) array
+        +getTotalsForProducts(int[] productIds) array
     }
 
     ProductRepositoryInterface <|.. MySqlProductRepository : implements
@@ -519,14 +525,17 @@ classDiagram
         +string orderDate
         +int createdBy
         +PurchaseOrderItem[] items
+        +const NUMBER_PREFIX = "PO-"
+        +const NUMBER_DIGITS = 6
+        +number() string
     }
 
     class PurchaseOrderRepositoryInterface {
         <<interface>>
         +findById(int id) PurchaseOrder?
         +save(PurchaseOrder po) PurchaseOrder
-        +updateStatus(int id, PurchaseOrderStatus status) void
-        +incrementItemReceivedQty(int itemId, int delta) void
+        +transitionStatus(int id, PurchaseOrderStatus[] expected, PurchaseOrderStatus next) bool
+        +incrementItemReceivedQtyIfWithinOrdered(int itemId, int delta) bool
         +listAll(string? search, PurchaseOrderStatus? status, int limit, int offset, string sortBy, string sortDir) PurchaseOrder[]
         +countAll(string? search, PurchaseOrderStatus? status) int
     }
@@ -591,6 +600,8 @@ classDiagram
     }
 
     class PurchaseOrderController {
+        -const ALLOWED_ROLES
+        -const COMMIT_ROLES
         -const STATUS_FILTERS
         -const STATUS_MESSAGES
         -PurchaseOrderService purchaseOrderService
@@ -638,7 +649,7 @@ classDiagram
 
     note for PurchaseOrderService "Dependency terbanyak dari semua Service sejauh ini\n(4 repository interface) - mencerminkan createPurchaseOrder()\nharus memvalidasi TIGA foreign key sekaligus (supplier,\ngudang, dan produk per baris item), bukan cuma satu\nseperti Produk memvalidasi kategori."
     note for GoodsReceiptService "Dipisah dari PurchaseOrderService (bukan cuma\nmethod tambahan) karena computeReceiptPlan() murni\n(diuji tanpa PDO) sedangkan receive() butuh transaksi\nPDO nyata lintas 3 repository - lihat ADR-0005 untuk\nalasan lengkap kenapa PDO di-inject langsung di sini,\nsatu-satunya Service yang melakukannya."
-    note for PurchaseOrderRepositoryInterface "save() sengaja cuma insert (header+item sekaligus,\ndibungkus transaksi internal) - PO tidak diedit setelah\ndibuat, hanya status dan receivedQty per item yang\nberubah lewat updateStatus()/incrementItemReceivedQty()."
+    note for PurchaseOrderRepositoryInterface "save() sengaja cuma insert (header+item sekaligus,\ndibungkus transaksi internal) - PO tidak diedit setelah\ndibuat, hanya status dan receivedQty per item yang berubah.\nKeduanya lewat write BERSYARAT yang mengembalikan bool\n(transitionStatus / incrementItemReceivedQtyIfWithinOrdered):\nsyaratnya ikut di WHERE, bukan dibaca dulu lalu ditulis,\nsupaya dua request konkuren tidak sama-sama lolos\n(ARCH-02, ADR-0007)."
 ```
 
 Catatan tambahan (di luar diagram): akses baca (`index()`/`show()`) dan aksi mutasi PO seluruhnya digerbang `requireRole([Admin, WarehouseStaff])` - beda dari Produk yang membuka akses baca ke seluruh role (§1.2 tidak memberi Sales visibilitas apa pun ke Purchase Order). Item sidebar "Purchase Order" disembunyikan dari Sales lewat filter per-item baru di `shell-start.php` (`$navGroups[...]['roles']`) - sebelumnya hanya bisa menyembunyikan satu grup utuh sekaligus.
@@ -735,14 +746,17 @@ classDiagram
         +int? approvedBy
         +string? createdAt
         +SalesOrderItem[] items
+        +const NUMBER_PREFIX = "SO-"
+        +const NUMBER_DIGITS = 6
+        +number() string
     }
 
     class SalesOrderRepositoryInterface {
         <<interface>>
         +findById(int id) SalesOrder?
         +save(SalesOrder so) SalesOrder
-        +updateStatus(int id, SalesOrderStatus status) void
-        +approve(int id, int approvedBy) void
+        +transitionStatus(int id, SalesOrderStatus[] expected, SalesOrderStatus next) bool
+        +approve(int id, int approvedBy) bool
         +listAll(string? search, SalesOrderStatus? status, int? createdBy, int limit, int offset, string sortBy, string sortDir) SalesOrder[]
         +countAll(string? search, SalesOrderStatus? status, int? createdBy) int
     }
@@ -854,7 +868,7 @@ classDiagram
         -CustomerRepositoryInterface customers
         -UserRepositoryInterface users
         +getStockLedgerReport(string from, string to) array
-        +getOrdersReport(string from, string to) array
+        +getOrdersReport(string from, string to, int? onlyCreatedBy) array
     }
 
     class DashboardController {
@@ -865,6 +879,8 @@ classDiagram
 
     class ReportController {
         -const DEFAULT_RANGE_DAYS = 30
+        -const STOCK_REPORT_ROLES
+        -const ORDER_REPORT_ROLES
         -ReportService reportService
         -AuthGuard guard
         +index() void
@@ -923,3 +939,9 @@ Method baru di repository yang sudah ada (tidak digambar ulang sebagai kelas ter
 17. **`SalesOrderController` (Diagram I) TIDAK mengulang pola `PurchaseOrderController` yang menggabungkan role-gating dengan ownership check secara seragam** - initial (Diagram 3) menyamaratakan "Sales Order" sebagai modul yang cukup di-gate lewat `requireRole()` seperti Purchase Order. Begitu §1.2 dibaca ulang saat coding (Sales boleh membuat/mengajukan/membatalkan order **miliknya sendiri** tapi TIDAK PERNAH boleh approve, termasuk order sendiri), jadi jelas satu role gate saja tidak cukup - beberapa aksi (submitForApproval, cancel) butuh role gate DAN perbandingan `createdBy` eksplisit, sementara approve() cukup role gate saja (Sales tidak pernah lolos ke situ). Ini alasan `SalesOrderController` jadi Controller paling banyak percabangan otorisasi di codebase ini.
 18. **`DashboardService`/`ReportService` (Diagram J) bergantung LANGSUNG ke Repository interface, bukan ke Service lain** (`ProductService`/`PurchaseOrderService`/`SalesOrderService`) - initial (Diagram 3) belum menggambar modul ini sama sekali karena DASH-01/REPORT-01 sengaja ditunda ke akhir alur vertical slice (§2). Begitu benar-benar dikerjakan, polanya mengikuti `GoodsIssueService`/`GoodsReceiptService` (akses repository langsung untuk kebutuhan agregasi lintas-tabel), bukan pola Controller-ke-Service-bisnis biasa - agregasi baca murni (COUNT/SUM/GROUP BY) tidak butuh business rule tambahan yang dijaga Service lain (validasi, transisi status), jadi memaksakan lapisan Service perantara di sini cuma menambah indirection tanpa manfaat nyata.
 19. **`ReportService` (8 dependency constructor, rekor terbanyak) tidak pernah muncul di initial** - REPORT-01 di initial cuma dicatat sebagai requirement teks, mekanismenya belum didesain. Jumlah dependency yang besar bukan tanda pelanggaran SRP (tanggung jawabnya tetap satu: "menyusun baris laporan siap-ekspor") melainkan cerminan kebutuhan nyata memperkaya baris CSV dengan nama (produk/gudang/supplier/customer/user), bukan id mentah - pola yang sama dengan alasan `PurchaseOrderService` (Diagram G) punya 4 dependency.
+20. **Seluruh transisi status PO/SO berubah dari `updateStatus()` (void) jadi `transitionStatus(id, expected[], next)` yang mengembalikan `bool`**, dan `incrementItemReceivedQty()` jadi `incrementItemReceivedQtyIfWithinOrdered()`. Initial maupun draf as-built sebelumnya menggambarkan penulisan status sebagai perintah biasa - baca status dulu di Service, lalu tulis. Saat audit ulang terhadap brief, pola itu terbukti menyisakan celah balapan yang TIDAK ditutup oleh guard oversell `decrementIfSufficient()`: guard itu menjaga baris stok, bukan order-nya, sehingga satu SO bisa dipenuhi dua kali (stok berkurang dua kali, dua baris ledger untuk satu order) dan satu item PO bisa diterima melebihi qty yang dipesan. Syaratnya sekarang ikut di `WHERE` dan hasilnya dilaporkan lewat `bool` - bentuk yang sama dengan `decrementIfSufficient()` yang sudah ada, bukan mekanisme baru. Alasan lengkap: ADR-0007.
+21. **`AuthGuard` bertambah dependency `UserRepositoryInterface`** - satu-satunya kelas di `App\Session` yang menyentuh repository. Semula session menyimpan `user_id`+`user_name`+`user_role` sekaligus, sehingga isi session adalah salinan hak akses pada detik user login: akun yang dinonaktifkan Admin tetap berhak penuh sampai ia logout sendiri. Karena §1.2 adalah soal segregation of duties, pencabutan akses harus langsung berlaku, jadi session kini cuma menyimpan `user_id` dan identitas/role dibaca ulang tiap request.
+22. **`PurchaseOrder`/`SalesOrder` (entity) bertambah `number()` beserta konstanta formatnya.** Nomor yang dilihat user (`PO-000012`) sebelumnya dirakit ulang dengan `str_pad()` di empat view dan sekali lagi di `ReportService` - sementara pencarian FIND-01 hanya mencocokkan id mentah, sehingga mengetik nomor persis seperti yang tampil di layar justru tidak menemukan apa pun. Format dipindah ke entity supaya tampilan, laporan, dan pencarian tidak bisa lagi berbeda.
+23. **`ProductStockRepositoryInterface` bertambah `totalQuantityByProducts()` dan `StockService` bertambah `getTotalsForProducts()`** - satu query GROUP BY untuk satu halaman daftar Produk, bukan `findByProduct()` per baris (N+1). Ditambahkan karena daftar Produk menampilkan reorder point tanpa angka stok pembandingnya, sehingga filter status stok FIND-01 bekerja benar tapi terlihat seperti tidak berpengaruh.
+24. **`ReportService::getOrdersReport()` bertambah parameter `onlyCreatedBy`, dan `ReportController` punya dua konstanta role** (`STOCK_REPORT_ROLES`, `ORDER_REPORT_ROLES`). Semula seluruh endpoint laporan Admin-only, padahal §1.2 memberi Sales "order miliknya" dan Warehouse Staff "laporan stok" - dua baris matriks yang belum terimplementasi. Penyaringan milik-sendiri diambil dari id session, bukan parameter request.
+25. **`NormalizesSearchTerm` (trait baru) tidak ada di initial.** Delapan Service menulis ulang method normalisasi kata kunci yang identik; diangkat ke satu trait tanpa state/dependency. `PurchaseOrderService`/`SalesOrderService` meng-alias method itu karena punya aturan tambahan membuang awalan `PO-`/`SO-`.

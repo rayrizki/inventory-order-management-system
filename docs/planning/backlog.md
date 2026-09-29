@@ -44,7 +44,7 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 | VIEW-01 | List, detail, empty state | **Sebagian** | Empty state & detail page fungsional di semua modul (diverifikasi Playwright/curl per slice); **belum ada file screenshot tersimpan** sebagai bukti eksplisit yang diminta brief |
 | FIND-01 | Search/filter/sort/pagination + seed 30 produk & 25 order | Selesai | Search/filter/sort/pagination selesai untuk Produk, PO, SO termasuk filter status stok low/normal (tech-debt #5); seed 25 order gabungan PO+SO selesai (tech-debt #6, `docs/testing/seed-data-verification.md`) - PO kini teruji 2 halaman pagination dengan data nyata |
 | DASH-01 | Dashboard per role dari query agregasi | Selesai | `docs/testing/dashboard-report-slice.md` - nilai inventori/low-stock/PO+SO per status (Admin), SO milik sendiri per status (Sales), antrean goods receipt/issue + low-stock (Warehouse Staff) |
-| REPORT-01 | Laporan CSV (stock ledger + status order) | Selesai | `docs/testing/dashboard-report-slice.md` - dua CSV (pergerakan stok, status order gabungan PO+SO), Admin-only, diverifikasi dengan 2 rentang tanggal berbeda |
+| REPORT-01 | Laporan CSV (stock ledger + status order) | Selesai | `docs/testing/dashboard-report-slice.md` - dua CSV (pergerakan stok, status order gabungan PO+SO), diverifikasi dengan 2 rentang tanggal berbeda. Hak unduh per role sesuai §1.2 (Admin keduanya, Sales order miliknya, Warehouse Staff laporan stok) dan netralisasi CSV injection ditambahkan setelah audit - tech-debt #11 & #12 |
 
 ## 2.6 API
 
@@ -75,15 +75,15 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 |---|---|---|---|
 | DESIGN-01 | Class diagram initial & as-built | Selesai | `docs/planning/class-diagram-initial.md`, `docs/architecture/class-diagram-as-built.md` (10 diagram, A-J, terus diperbarui per slice) |
 | DESIGN-02 | 2-3 ADR | Selesai (melebihi minimum) | 6 ADR di `docs/architecture/adr-*.md` |
-| DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai | `docs/quality/refactor-log.md`, `docs/quality/tech-debt.md`, commit `3848279` |
+| DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai (melebihi minimum) | `docs/quality/refactor-log.md` (6 entri - 3 dari slice Kategori, 3 dari audit brief), `docs/quality/tech-debt.md` (17 entri), commit refactor `3848279` dan `refactor: extract the duplicated search-term normaliser into a trait` |
 | DESIGN-04 | Critique exercise (cuplikan kode dari assessor) | Sebagian - menunggu cuplikan assessor | `docs/quality/critique.md` sudah ada berisi self-critique `list-controls.js` (smell, prinsip SOLID yang dilanggar, arah refactor); bagian untuk cuplikan assessor baru bisa diisi saat defense |
 
 ## 3.3 Testing
 
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
-| TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 181 test total, jauh dari 6 minimum, mencakup lebih dari 3 area logic |
-| TEST-02 | Integration test MySQL (min 3) | Selesai (melebihi minimum) | Termasuk bukti eksplisit oversell-prevention SO-01 |
+| TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 192 test total (131 unit + 61 integration), jauh dari 6 minimum, mencakup lebih dari 3 area logic |
+| TEST-02 | Integration test MySQL (min 3) | Selesai (melebihi minimum) | Termasuk bukti eksplisit oversell-prevention SO-01, dan skenario konkuren dua koneksi PDO untuk double-fulfil (ADR-0007) yang dipastikan gagal kalau guard-nya dilepas |
 | TEST-03 | Static analysis (PHPStan level 5+) | Selesai | PHPStan level 6, 0 error - `docs/quality/static-analysis.md` |
 
 ## Ringkasan status saat ini (2026-09-18)
