@@ -2,7 +2,7 @@
 
 Tiga entri pertama terjadi di dalam satu vertical slice yang sama (Kategori) -
 ditemukan dan diperbaiki sambil fitur berkembang, bukan dicari-cari di akhir
-untuk memenuhi checklist. Entri 4-6 berasal dari audit menyeluruh terhadap
+untuk memenuhi checklist. Entri 4-7 berasal dari audit menyeluruh terhadap
 brief setelah seluruh slice selesai: ketiganya memperbaiki kode lama yang
 sudah berjalan, bukan fitur yang sedang dikerjakan (Boy Scout Rule).
 
@@ -311,3 +311,67 @@ final class PurchaseOrderService
 Perilaku tidak berubah (192 test tetap lulus, pencarian nomor order, nama
 supplier, dan nama produk diuji manual). Commit: `refactor: extract the
 duplicated search-term normaliser into a trait`.
+
+## 7. Duplicate Code -> Extract Template (`views/shared/supplier-customer-list.php` dan `-form.php`)
+
+**Smell**: seluruh halaman Supplier dan Customer adalah salinan satu sama
+lain. Diukur dengan mengganti kata "Supplier" jadi "Customer" lalu
+membandingkan: `index.php` 337 baris dengan **2 baris berbeda**, `form.php`
+60 baris dengan **0 baris berbeda**. Dua baris yang berbeda itu pun hanya
+teks empty state ("...mulai mencatat purchase order" vs "...sales order").
+
+Riwayat git menunjukkan biayanya nyata: keenam file kedua modul hanya pernah
+disentuh oleh tiga commit yang sama persis - tidak pernah ada perubahan yang
+hanya mengenai salah satunya, artinya setiap perbaikan memang dikerjakan dua
+kali.
+
+**Teknik**: Extract Template (bukan Extract Class - yang diangkat markup,
+bukan perilaku), dengan modul asal menjadi adapter tipis berisi konfigurasi.
+
+Sebelum (dua file 337 baris yang isinya sama):
+```php
+// views/suppliers/index.php
+$pageTitle = 'Supplier';
+$activeNav = 'suppliers';
+require __DIR__ . '/../layout/shell-start.php';
+// ... 330 baris markup ...
+<h1>Supplier</h1>
+<p class="page-header__meta"><?= $totalSuppliers ?> supplier</p>
+<form method="get" action="/suppliers" class="search-box">
+// ... dst, disalin lagi di views/customers/index.php dengan kata diganti
+```
+
+Sesudah:
+```php
+// views/suppliers/index.php - seluruh isinya
+$records = $suppliers;
+$totalRecords = $totalSuppliers;
+$entityLabel = 'Supplier';
+$entityKey = 'supplier';
+$listUrl = '/suppliers';
+$navKey = 'suppliers';
+$emptyStateContext = 'purchase order';
+
+require __DIR__ . '/../shared/supplier-customer-list.php';
+```
+
+Total view turun dari 794 menjadi 508 baris. **Hanya lapisan tampilan yang
+dibagi** - Entity, Repository, dan tabelnya tetap terpisah karena di situlah
+foreign key `purchase_orders.supplier_id` vs `sales_orders.customer_id`
+menjamin PO tidak mungkin menunjuk ke customer. Alasan lengkap beserta
+pemicu kapan pembagian ini harus dibubarkan: ADR-0008.
+
+**Jebakan yang ditemukan saat mengerjakannya**: template di-`require`
+sehingga berbagi scope dengan `shell-start.php`. Versi pertama memakai
+`$items`/`$item` - nama yang sudah dipakai layout untuk loop menu sidebar -
+sehingga seluruh baris tabel tampil kosong tanpa satu pun pesan error.
+Ketahuan karena HTML hasil render dibandingkan dengan rekaman sebelum
+refaktor, bukan karena test atau static analysis (lihat tech-debt #17:
+`views/` memang di luar cakupan PHPStan). Diganti jadi `$records`/`$record`,
+dan daftar nama yang sudah dipesan layout dicantumkan di docblock template.
+
+**Bukti tidak ada perubahan perilaku**: HTML delapan halaman (daftar kedua
+modul, modal tambah, form ubah, pencarian dengan sort + per_page, filter
+status) direkam sebelum dan sesudah, dibandingkan baris per baris - **nol
+perbedaan**. Aksi POST diuji terpisah (toggle aktif/nonaktif dua kali sampai
+kembali ke nilai semula). 192 test tetap lulus.

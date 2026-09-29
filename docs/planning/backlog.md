@@ -74,8 +74,8 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 | ID | Deskripsi singkat | Status | Bukti / catatan |
 |---|---|---|---|
 | DESIGN-01 | Class diagram initial & as-built | Selesai | `docs/planning/class-diagram-initial.md`, `docs/architecture/class-diagram-as-built.md` (10 diagram, A-J, terus diperbarui per slice) |
-| DESIGN-02 | 2-3 ADR | Selesai (melebihi minimum) | 6 ADR di `docs/architecture/adr-*.md` |
-| DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai (melebihi minimum) | `docs/quality/refactor-log.md` (6 entri - 3 dari slice Kategori, 3 dari audit brief), `docs/quality/tech-debt.md` (17 entri), commit refactor `3848279` dan `refactor: extract the duplicated search-term normaliser into a trait` |
+| DESIGN-02 | 2-3 ADR | Selesai (melebihi minimum) | 8 ADR di `docs/architecture/adr-*.md` |
+| DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai (melebihi minimum) | `docs/quality/refactor-log.md` (7 entri - 3 dari slice Kategori, 4 dari audit brief) + catatan audit SRP, `docs/quality/tech-debt.md` (18 entri), commit refactor `3848279`, `refactor: extract the duplicated search-term normaliser into a trait`, dan `refactor: share the Supplier and Customer view layer` |
 | DESIGN-04 | Critique exercise (cuplikan kode dari assessor) | Sebagian - menunggu cuplikan assessor | `docs/quality/critique.md` sudah ada berisi self-critique `list-controls.js` (smell, prinsip SOLID yang dilanggar, arah refactor); bagian untuk cuplikan assessor baru bisa diisi saat defense |
 
 ## 3.3 Testing
