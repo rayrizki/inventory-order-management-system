@@ -83,18 +83,41 @@ final class MySqlSalesOrderRepository implements SalesOrderRepositoryInterface
         return $saved;
     }
 
-    public function updateStatus(int $id, SalesOrderStatus $status): void
+    public function transitionStatus(int $id, array $expected, SalesOrderStatus $next): bool
     {
-        $statement = $this->pdo->prepare('UPDATE sales_orders SET status = :status WHERE id = :id');
-        $statement->execute(['status' => $status->value, 'id' => $id]);
+        // Placeholder dibuat sebanyak status yang diizinkan (bukan IN (:list)
+        // yang tidak didukung prepared statement) - jumlahnya selalu berasal
+        // dari kode, tidak pernah dari input user.
+        $placeholders = [];
+        $params = ['next' => $next->value, 'id' => $id];
+        foreach (array_values($expected) as $index => $status) {
+            $placeholders[] = ":expected_$index";
+            $params["expected_$index"] = $status->value;
+        }
+
+        $statement = $this->pdo->prepare(sprintf(
+            'UPDATE sales_orders SET status = :next WHERE id = :id AND status IN (%s)',
+            implode(', ', $placeholders),
+        ));
+        $statement->execute($params);
+
+        return $statement->rowCount() > 0;
     }
 
-    public function approve(int $id, int $approvedBy): void
+    public function approve(int $id, int $approvedBy): bool
     {
         $statement = $this->pdo->prepare(
-            'UPDATE sales_orders SET status = :status, approved_by = :approved_by WHERE id = :id'
+            'UPDATE sales_orders SET status = :status, approved_by = :approved_by
+             WHERE id = :id AND status = :expected'
         );
-        $statement->execute(['status' => SalesOrderStatus::Approved->value, 'approved_by' => $approvedBy, 'id' => $id]);
+        $statement->execute([
+            'status' => SalesOrderStatus::Approved->value,
+            'approved_by' => $approvedBy,
+            'id' => $id,
+            'expected' => SalesOrderStatus::PendingApproval->value,
+        ]);
+
+        return $statement->rowCount() > 0;
     }
 
     public function listAll(

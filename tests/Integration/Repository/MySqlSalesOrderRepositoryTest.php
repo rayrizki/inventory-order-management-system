@@ -104,38 +104,66 @@ final class MySqlSalesOrderRepositoryTest extends TestCase
         self::assertNull($found->approvedBy);
     }
 
-    public function testUpdateStatusChangesStatus(): void
+    public function testTransitionStatusChangesStatusWhenCurrentStatusMatches(): void
     {
         $repository = new MySqlSalesOrderRepository($this->pdo);
         $saved = $repository->save($this->makeSalesOrder());
 
-        $repository->updateStatus($saved->id, SalesOrderStatus::PendingApproval);
-
+        self::assertTrue($repository->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval));
         self::assertSame(SalesOrderStatus::PendingApproval, $repository->findById($saved->id)->status);
+    }
+
+    public function testTransitionStatusRejectsWhenCurrentStatusNoLongerMatches(): void
+    {
+        $repository = new MySqlSalesOrderRepository($this->pdo);
+        $saved = $repository->save($this->makeSalesOrder());
+        $repository->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval);
+
+        // Transisi kedua memakai syarat lama (Draft) - persis situasi request
+        // konkuren yang membaca status sebelum request pertama commit. Inilah
+        // guard yang mencegah satu SO dipenuhi/dibatalkan dua kali.
+        $second = $repository->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::Cancelled);
+
+        self::assertFalse($second);
+        self::assertSame(SalesOrderStatus::PendingApproval, $repository->findById($saved->id)->status, 'status tidak boleh tertimpa transisi yang syaratnya sudah basi');
     }
 
     public function testApproveSetsStatusAndApprovedByTogether(): void
     {
         $repository = new MySqlSalesOrderRepository($this->pdo);
         $saved = $repository->save($this->makeSalesOrder());
-        $repository->updateStatus($saved->id, SalesOrderStatus::PendingApproval);
+        $repository->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval);
 
         $statement = $this->pdo->prepare('SELECT id FROM users WHERE email = :email');
         $statement->execute(['email' => 'admin@iom.test']);
         $adminId = (int) $statement->fetchColumn();
 
-        $repository->approve($saved->id, $adminId);
+        self::assertTrue($repository->approve($saved->id, $adminId));
 
         $found = $repository->findById($saved->id);
         self::assertSame(SalesOrderStatus::Approved, $found->status);
         self::assertSame($adminId, $found->approvedBy);
     }
 
+    public function testApproveRejectsSecondAttemptSoApprovedByIsNotOverwritten(): void
+    {
+        $repository = new MySqlSalesOrderRepository($this->pdo);
+        $saved = $repository->save($this->makeSalesOrder());
+        $repository->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval);
+
+        $statement = $this->pdo->prepare('SELECT id FROM users WHERE email = :email');
+        $statement->execute(['email' => 'admin@iom.test']);
+        $adminId = (int) $statement->fetchColumn();
+
+        self::assertTrue($repository->approve($saved->id, $adminId));
+        self::assertFalse($repository->approve($saved->id, $adminId), 'SO yang sudah Approved tidak boleh disetujui lagi');
+    }
+
     public function testListAllFiltersBySearchStatusAndCreatedBy(): void
     {
         $repository = new MySqlSalesOrderRepository($this->pdo);
         $saved = $repository->save($this->makeSalesOrder());
-        $repository->updateStatus($saved->id, SalesOrderStatus::PendingApproval);
+        $repository->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval);
 
         $bySearch = $repository->listAll(search: 'Test Customer SO ZZZ');
         self::assertNotEmpty(array_filter($bySearch, static fn (SalesOrder $so): bool => $so->id === $saved->id));

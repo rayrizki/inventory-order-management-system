@@ -19,13 +19,29 @@ interface PurchaseOrderRepositoryInterface
      * Insert PO baru (selalu status Draft) beserta seluruh item sekaligus,
      * dalam satu transaksi internal. Tidak ada "update" untuk header/item -
      * PO tidak diedit setelah dibuat, hanya status dan receivedQty per item
-     * yang berubah (lewat updateStatus()/incrementItemReceivedQty()).
+     * yang berubah (lewat transitionStatus()/incrementItemReceivedQtyIfWithinOrdered()).
      */
     public function save(PurchaseOrder $purchaseOrder): PurchaseOrder;
 
-    public function updateStatus(int $id, PurchaseOrderStatus $status): void;
+    /**
+     * ARCH-02: transisi status BERSYARAT - lihat alasan lengkapnya di
+     * SalesOrderRepositoryInterface::transitionStatus(). Mengembalikan false
+     * kalau status sudah bukan salah satu dari $expected (diubah request lain).
+     *
+     * @param PurchaseOrderStatus[] $expected status yang masih boleh ditransisikan
+     */
+    public function transitionStatus(int $id, array $expected, PurchaseOrderStatus $next): bool;
 
-    public function incrementItemReceivedQty(int $itemId, int $delta): void;
+    /**
+     * ARCH-02: menambah received_qty hanya kalau hasilnya TIDAK melebihi qty
+     * yang dipesan, dalam satu UPDATE dengan guard di WHERE - mengembalikan
+     * false kalau penambahan itu akan melewati batas. Membaca sisa qty lalu
+     * menambah di query terpisah membuka celah balapan: dua goods receipt
+     * konkuren untuk item yang sama sama-sama melihat sisa 5, dua-duanya
+     * menambah 5, received_qty jadi 10 pada baris yang cuma dipesan 5 - stok
+     * bertambah lebih banyak daripada barang yang sebenarnya dipesan.
+     */
+    public function incrementItemReceivedQtyIfWithinOrdered(int $itemId, int $delta): bool;
 
     /**
      * @return PurchaseOrder[] items selalu [] (kosong) - daftar tidak

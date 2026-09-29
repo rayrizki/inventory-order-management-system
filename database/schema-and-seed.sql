@@ -111,6 +111,12 @@ CREATE TABLE IF NOT EXISTS purchase_order_items (
     qty INT UNSIGNED NOT NULL CHECK (qty > 0),
     buy_price DECIMAL(14, 2) NOT NULL CHECK (buy_price >= 0),
     received_qty INT UNSIGNED NOT NULL DEFAULT 0 CHECK (received_qty >= 0),
+    -- ARCH-02: pagar terakhir di level database, sejajar dengan
+    -- product_stock.CHECK (quantity >= 0). Guard utama ada di WHERE milik
+    -- incrementItemReceivedQtyIfWithinOrdered(), tapi constraint ini
+    -- memastikan tidak ada jalur lain (query manual, migrasi, perbaikan
+    -- data) yang bisa membuat barang diterima melebihi yang dipesan.
+    CONSTRAINT chk_poi_received_not_over_ordered CHECK (received_qty <= qty),
     KEY idx_poi_po (purchase_order_id),
     KEY idx_poi_product (product_id),
     CONSTRAINT fk_poi_po FOREIGN KEY (purchase_order_id) REFERENCES purchase_orders (id),

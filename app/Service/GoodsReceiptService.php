@@ -53,8 +53,18 @@ final class GoodsReceiptService
 
         $this->pdo->beginTransaction();
         try {
-            foreach ($plan as $itemId => $line) {
-                $this->purchaseOrders->incrementItemReceivedQty($itemId, $line['qty']);
+            foreach ($this->planInLockOrder($plan) as $itemId => $line) {
+                // Guard di WHERE, bukan cuma di computeReceiptPlan(): rencana
+                // itu dihitung dari sisa qty yang dibaca SEBELUM transaksi, jadi
+                // dua penerimaan konkuren atas item yang sama bisa sama-sama
+                // lolos validasi. UPDATE bersyarat ini yang memastikan hanya
+                // satu di antaranya benar-benar menambah received_qty.
+                if (!$this->purchaseOrders->incrementItemReceivedQtyIfWithinOrdered($itemId, $line['qty'])) {
+                    throw new ConflictException(
+                        'Sisa qty item ini sudah berubah (kemungkinan diterima request lain) - muat ulang halaman lalu periksa lagi.'
+                    );
+                }
+
                 $this->stocks->incrementQuantity($line['item']->productId, $purchaseOrder->warehouseId, $line['qty']);
                 $this->ledger->record(new StockLedgerEntry(
                     null,
@@ -70,16 +80,34 @@ final class GoodsReceiptService
             }
 
             $updated = $this->purchaseOrders->findById($purchaseOrderId);
+            assert($updated !== null);
             $newStatus = $this->allItemsFullyReceived($updated) ? PurchaseOrderStatus::Received : PurchaseOrderStatus::PartiallyReceived;
-            $this->purchaseOrders->updateStatus($purchaseOrderId, $newStatus);
+
+            // Status hanya boleh maju dari dua status yang memang menerima
+            // barang - kalau PO keburu dibatalkan request lain, transisi ini
+            // gagal dan seluruh penerimaan ikut di-rollback, sehingga stok
+            // tidak pernah bertambah untuk PO yang sudah Cancelled.
+            $receivable = [PurchaseOrderStatus::Ordered, PurchaseOrderStatus::PartiallyReceived];
+            if (!$this->purchaseOrders->transitionStatus($purchaseOrderId, $receivable, $newStatus)) {
+                throw new ConflictException('Status PO berubah saat diproses - muat ulang halaman lalu periksa lagi.');
+            }
 
             $this->pdo->commit();
         } catch (Throwable $exception) {
-            $this->pdo->rollBack();
+            // inTransaction() dicek dulu: kalau commit() sendiri yang gagal,
+            // transaksi sudah tidak aktif dan rollBack() akan melempar
+            // exception kedua yang menutupi penyebab aslinya.
+            if ($this->pdo->inTransaction()) {
+                $this->pdo->rollBack();
+            }
+
             throw $exception;
         }
 
-        return $this->purchaseOrders->findById($purchaseOrderId);
+        $result = $this->purchaseOrders->findById($purchaseOrderId);
+        assert($result !== null);
+
+        return $result;
     }
 
     /**
@@ -147,6 +175,23 @@ final class GoodsReceiptService
     public function getReceiptHistory(int $purchaseOrderId): array
     {
         return $this->ledger->findByReference(self::REFERENCE_TYPE, $purchaseOrderId);
+    }
+
+    /**
+     * Baris product_stock dikunci menaik berdasarkan productId, bukan urutan
+     * item diketik user - dua PO yang memuat produk sama dengan urutan input
+     * berbeda kalau diterima bersamaan bisa saling menunggu kunci milik yang
+     * lain (deadlock InnoDB 1213). Kunci array (itemId) dipertahankan karena
+     * dipakai sebagai argumen incrementItemReceivedQtyIfWithinOrdered().
+     *
+     * @param array<int, array{item: PurchaseOrderItem, qty: int}> $plan
+     * @return array<int, array{item: PurchaseOrderItem, qty: int}>
+     */
+    private function planInLockOrder(array $plan): array
+    {
+        uasort($plan, static fn (array $a, array $b): int => $a['item']->productId <=> $b['item']->productId);
+
+        return $plan;
     }
 
     private function allItemsFullyReceived(PurchaseOrder $purchaseOrder): bool

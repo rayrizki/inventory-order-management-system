@@ -27,6 +27,13 @@ final class SalesOrderService
 {
     public const PER_PAGE = 10;
 
+    /**
+     * Dipakai saat transisi status bersyarat gagal: status sudah diubah
+     * request lain di antara baca dan tulis, jadi yang perlu dilakukan user
+     * adalah memuat ulang, bukan mengulang aksi yang sama.
+     */
+    private const STATUS_CHANGED_CONCURRENTLY = 'Status SO berubah saat diproses - muat ulang halaman lalu coba lagi.';
+
     public function __construct(
         private readonly SalesOrderRepositoryInterface $salesOrders,
         private readonly CustomerRepositoryInterface $customers,
@@ -98,7 +105,12 @@ final class SalesOrderService
             throw new ConflictException('Hanya SO berstatus Draft yang bisa diajukan untuk persetujuan.');
         }
 
-        $this->salesOrders->updateStatus($id, SalesOrderStatus::PendingApproval);
+        // Pengecekan di atas memberi pesan yang jelas untuk kasus biasa; guard
+        // di bawah menutup jeda antara baca dan tulis (status bisa berubah oleh
+        // request lain di antara keduanya).
+        if (!$this->salesOrders->transitionStatus($id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval)) {
+            throw new ConflictException(self::STATUS_CHANGED_CONCURRENTLY);
+        }
 
         return $this->getSalesOrderById($id);
     }
@@ -116,7 +128,9 @@ final class SalesOrderService
             throw new ConflictException('Hanya SO berstatus PendingApproval yang bisa disetujui.');
         }
 
-        $this->salesOrders->approve($id, $approvedBy);
+        if (!$this->salesOrders->approve($id, $approvedBy)) {
+            throw new ConflictException(self::STATUS_CHANGED_CONCURRENTLY);
+        }
 
         return $this->getSalesOrderById($id);
     }
@@ -130,11 +144,19 @@ final class SalesOrderService
     {
         $salesOrder = $this->getSalesOrderById($id);
 
-        if (!in_array($salesOrder->status, [SalesOrderStatus::Draft, SalesOrderStatus::PendingApproval, SalesOrderStatus::Approved], true)) {
+        $cancellable = [SalesOrderStatus::Draft, SalesOrderStatus::PendingApproval, SalesOrderStatus::Approved];
+
+        if (!in_array($salesOrder->status, $cancellable, true)) {
             throw new ConflictException('SO yang sudah dipenuhi atau sudah dibatalkan tidak bisa dibatalkan lagi.');
         }
 
-        $this->salesOrders->updateStatus($id, SalesOrderStatus::Cancelled);
+        // Guard penting khusus di sini: tanpa syarat status di WHERE, cancel
+        // yang berjalan bersamaan dengan goods issue bisa menandai SO
+        // Cancelled PADAHAL stoknya sudah keluar dan ledger sudah menulis
+        // baris Issue - ProductStock dan SalesOrder jadi saling bertentangan.
+        if (!$this->salesOrders->transitionStatus($id, $cancellable, SalesOrderStatus::Cancelled)) {
+            throw new ConflictException(self::STATUS_CHANGED_CONCURRENTLY);
+        }
 
         return $this->getSalesOrderById($id);
     }

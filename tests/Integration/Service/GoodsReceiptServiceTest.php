@@ -95,7 +95,7 @@ final class GoodsReceiptServiceTest extends TestCase
             $this->adminUserId,
             [new PurchaseOrderItem(null, null, $this->productId, $qty, 10000, 0)],
         ));
-        $this->purchaseOrders->updateStatus($saved->id, PurchaseOrderStatus::Ordered);
+        $this->purchaseOrders->transitionStatus($saved->id, [PurchaseOrderStatus::Draft], PurchaseOrderStatus::Ordered);
 
         return $this->purchaseOrders->findById($saved->id);
     }
@@ -120,6 +120,31 @@ final class GoodsReceiptServiceTest extends TestCase
         self::assertCount(1, $ledgerEntries);
         self::assertSame(4, $ledgerEntries[0]->quantity);
         self::assertSame(\App\Entity\StockMovementType::Receipt, $ledgerEntries[0]->movementType);
+    }
+
+    /**
+     * Penerimaan bertahap TIGA kali: cicilan kedua membuat PO tetap
+     * PartiallyReceived - status tujuannya sama dengan status saat ini.
+     * Transisi status bersyarat harus tetap dianggap berhasil dalam kasus
+     * ini (syaratnya terpenuhi), bukan gagal hanya karena tidak ada nilai
+     * kolom yang berubah.
+     */
+    public function testSecondPartialReceiptSucceedsEvenThoughStatusStaysPartiallyReceived(): void
+    {
+        $po = $this->createOrderedPurchaseOrder(qty: 10);
+        $itemId = $po->items[0]->id;
+        $service = new GoodsReceiptService($this->purchaseOrders, $this->stocks, $this->ledger, $this->pdo);
+
+        $service->receive($po->id, [$itemId => 3], performedBy: $this->adminUserId);
+        $afterSecond = $service->receive($po->id, [$itemId => 3], performedBy: $this->adminUserId);
+
+        self::assertSame(PurchaseOrderStatus::PartiallyReceived, $afterSecond->status);
+        self::assertSame(6, $afterSecond->items[0]->receivedQty);
+        self::assertSame(4, $afterSecond->items[0]->remainingQty());
+
+        $stockRows = $this->stocks->findByProduct($this->productId);
+        self::assertSame(6, $stockRows[0]->quantity);
+        self::assertCount(2, $this->ledger->findByReference('purchase_order', $po->id));
     }
 
     public function testReceivingRemainingQtyAfterPartialSetsReceivedStatusAndAccumulatesStock(): void

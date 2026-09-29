@@ -81,18 +81,33 @@ final class MySqlPurchaseOrderRepository implements PurchaseOrderRepositoryInter
         return new PurchaseOrder($poId, $purchaseOrder->supplierId, $purchaseOrder->warehouseId, $purchaseOrder->status, $purchaseOrder->orderDate, $purchaseOrder->createdBy, $items);
     }
 
-    public function updateStatus(int $id, PurchaseOrderStatus $status): void
+    public function transitionStatus(int $id, array $expected, PurchaseOrderStatus $next): bool
     {
-        $statement = $this->pdo->prepare('UPDATE purchase_orders SET status = :status WHERE id = :id');
-        $statement->execute(['status' => $status->value, 'id' => $id]);
+        $placeholders = [];
+        $params = ['next' => $next->value, 'id' => $id];
+        foreach (array_values($expected) as $index => $status) {
+            $placeholders[] = ":expected_$index";
+            $params["expected_$index"] = $status->value;
+        }
+
+        $statement = $this->pdo->prepare(sprintf(
+            'UPDATE purchase_orders SET status = :next WHERE id = :id AND status IN (%s)',
+            implode(', ', $placeholders),
+        ));
+        $statement->execute($params);
+
+        return $statement->rowCount() > 0;
     }
 
-    public function incrementItemReceivedQty(int $itemId, int $delta): void
+    public function incrementItemReceivedQtyIfWithinOrdered(int $itemId, int $delta): bool
     {
         $statement = $this->pdo->prepare(
-            'UPDATE purchase_order_items SET received_qty = received_qty + :delta WHERE id = :id'
+            'UPDATE purchase_order_items SET received_qty = received_qty + :delta
+             WHERE id = :id AND received_qty + :delta_check <= qty'
         );
-        $statement->execute(['delta' => $delta, 'id' => $itemId]);
+        $statement->execute(['delta' => $delta, 'id' => $itemId, 'delta_check' => $delta]);
+
+        return $statement->rowCount() > 0;
     }
 
     public function listAll(

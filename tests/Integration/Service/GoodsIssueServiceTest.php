@@ -108,7 +108,7 @@ final class GoodsIssueServiceTest extends TestCase
         $saved = $this->salesOrders->save(new SalesOrder(
             null, $this->customerId, $this->warehouseId, SalesOrderStatus::Draft, $this->salesUserId, null, null, $items,
         ));
-        $this->salesOrders->updateStatus($saved->id, SalesOrderStatus::PendingApproval);
+        $this->salesOrders->transitionStatus($saved->id, [SalesOrderStatus::Draft], SalesOrderStatus::PendingApproval);
         $this->salesOrders->approve($saved->id, $this->salesUserId);
 
         return $this->salesOrders->findById($saved->id);
@@ -160,6 +160,45 @@ final class GoodsIssueServiceTest extends TestCase
             self::assertSame(0, $stockRows[0]->quantity, 'stok tidak boleh menjadi negatif akibat goods issue kedua yang ditolak');
             self::assertSame(SalesOrderStatus::Approved, $this->salesOrders->findById($secondSo->id)->status, 'status SO kedua tidak boleh berubah jadi Fulfilled saat ditolak');
         }
+    }
+
+    /**
+     * ARCH-02, sisi yang berbeda dari test oversell di atas: di sini stok
+     * SELALU cukup, jadi guard `quantity >= qty` tidak akan pernah menolak
+     * apa pun. Yang dicegah adalah SATU SO diproses dua kali (double-fulfil).
+     *
+     * Skenario konkuren ditiru secara terkontrol lewat DUA koneksi PDO
+     * terpisah - simulasi thread sungguhan tidak diwajibkan brief. Koneksi B
+     * membaca SO selagi statusnya masih Approved (jadi pemeriksaan status
+     * biasa akan meloloskannya), koneksi A menyelesaikan goods issue sampai
+     * commit, lalu B baru bertindak atas hasil bacaan yang sudah basi itu.
+     * Tanpa klaim status bersyarat, langkah terakhir B akan lolos dan
+     * mengeluarkan stok untuk kedua kalinya.
+     */
+    public function testConcurrentIssueOfSameSalesOrderIsRejectedForTheStaleReader(): void
+    {
+        $this->stocks->incrementQuantity($this->productId, $this->warehouseId, 100);
+        $so = $this->createApprovedSalesOrder([new SalesOrderItem(null, null, $this->productId, 10, 15000)]);
+
+        require_once __DIR__ . '/../../../config/database.php';
+        $pdoB = createPdoConnection();
+        $salesOrdersB = new MySqlSalesOrderRepository($pdoB);
+
+        // B membaca lebih dulu: dari sudut pandangnya SO ini layak diproses.
+        self::assertSame(SalesOrderStatus::Approved, $salesOrdersB->findById($so->id)->status);
+
+        // A menyelesaikan goods issue-nya sampai commit.
+        (new GoodsIssueService($this->salesOrders, $this->stocks, $this->ledger, $this->pdo))
+            ->issue($so->id, performedBy: $this->warehouseStaffId);
+
+        // B lanjut atas bacaan basi tadi - klaim status harus gagal.
+        $claimedByB = $salesOrdersB->transitionStatus($so->id, [SalesOrderStatus::Approved], SalesOrderStatus::Fulfilled);
+
+        self::assertFalse($claimedByB, 'request kedua tidak boleh berhasil mengklaim SO yang sudah dipenuhi request pertama');
+
+        $stockRows = $this->stocks->findByProduct($this->productId);
+        self::assertSame(90, $stockRows[0]->quantity, 'stok hanya boleh berkurang sekali untuk satu SO');
+        self::assertCount(1, $this->ledger->findByReference('sales_order', $so->id), 'hanya boleh ada satu baris ledger untuk satu SO');
     }
 
     /**

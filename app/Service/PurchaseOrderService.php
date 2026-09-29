@@ -20,6 +20,13 @@ final class PurchaseOrderService
 {
     public const PER_PAGE = 10;
 
+    /**
+     * Dipakai saat transisi status bersyarat gagal: status sudah diubah
+     * request lain di antara baca dan tulis, jadi yang perlu dilakukan user
+     * adalah memuat ulang, bukan mengulang aksi yang sama.
+     */
+    private const STATUS_CHANGED_CONCURRENTLY = 'Status PO berubah saat diproses - muat ulang halaman lalu coba lagi.';
+
     public function __construct(
         private readonly PurchaseOrderRepositoryInterface $purchaseOrders,
         private readonly SupplierRepositoryInterface $suppliers,
@@ -89,7 +96,11 @@ final class PurchaseOrderService
             throw new ConflictException('Hanya PO berstatus Draft yang bisa diajukan ke supplier.');
         }
 
-        $this->purchaseOrders->updateStatus($id, PurchaseOrderStatus::Ordered);
+        // Pengecekan di atas memberi pesan yang jelas untuk kasus biasa; guard
+        // di bawah menutup jeda antara baca dan tulis.
+        if (!$this->purchaseOrders->transitionStatus($id, [PurchaseOrderStatus::Draft], PurchaseOrderStatus::Ordered)) {
+            throw new ConflictException(self::STATUS_CHANGED_CONCURRENTLY);
+        }
 
         return $this->getPurchaseOrderById($id);
     }
@@ -102,11 +113,18 @@ final class PurchaseOrderService
     {
         $purchaseOrder = $this->getPurchaseOrderById($id);
 
-        if (!in_array($purchaseOrder->status, [PurchaseOrderStatus::Draft, PurchaseOrderStatus::Ordered, PurchaseOrderStatus::PartiallyReceived], true)) {
+        $cancellable = [PurchaseOrderStatus::Draft, PurchaseOrderStatus::Ordered, PurchaseOrderStatus::PartiallyReceived];
+
+        if (!in_array($purchaseOrder->status, $cancellable, true)) {
             throw new ConflictException('PO yang sudah diterima penuh atau sudah dibatalkan tidak bisa dibatalkan lagi.');
         }
 
-        $this->purchaseOrders->updateStatus($id, PurchaseOrderStatus::Cancelled);
+        // Guard penting khusus di sini: cancel yang berjalan bersamaan dengan
+        // goods receipt bisa menandai PO Cancelled padahal barangnya sudah
+        // masuk stok dan ledger sudah menulis baris Receipt.
+        if (!$this->purchaseOrders->transitionStatus($id, $cancellable, PurchaseOrderStatus::Cancelled)) {
+            throw new ConflictException(self::STATUS_CHANGED_CONCURRENTLY);
+        }
 
         return $this->getPurchaseOrderById($id);
     }

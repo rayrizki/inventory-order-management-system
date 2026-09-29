@@ -21,13 +21,28 @@ interface SalesOrderRepositoryInterface
      */
     public function save(SalesOrder $salesOrder): SalesOrder;
 
-    public function updateStatus(int $id, SalesOrderStatus $status): void;
+    /**
+     * ARCH-02: transisi status BERSYARAT - UPDATE hanya mengenai baris yang
+     * status-nya masih salah satu dari $expected, dan mengembalikan false
+     * kalau tidak ada baris yang berubah. Sengaja tidak ada varian tanpa
+     * syarat: membaca status lalu menulisnya di query terpisah membuka celah
+     * balapan (dua request sama-sama membaca "Approved", dua-duanya menulis
+     * "Fulfilled" - satu SO dipenuhi dua kali, ledger mencatat dua kali qty).
+     * Guard di WHERE membuat cek-dan-tulis jadi satu operasi atomik, pola
+     * yang sama dengan ProductStockRepositoryInterface::decrementIfSufficient().
+     *
+     * @param SalesOrderStatus[] $expected status yang masih boleh ditransisikan
+     */
+    public function transitionStatus(int $id, array $expected, SalesOrderStatus $next): bool;
 
     /**
      * Approve mengubah status DAN mencatat siapa yang menyetujui sekaligus -
-     * satu UPDATE, bukan dua panggilan terpisah.
+     * satu UPDATE, bukan dua panggilan terpisah. Dijaga syarat yang sama
+     * seperti transitionStatus(): hanya SO yang masih PendingApproval yang
+     * berubah, supaya dua Admin yang menyetujui bersamaan tidak saling
+     * menimpa `approved_by`.
      */
-    public function approve(int $id, int $approvedBy): void;
+    public function approve(int $id, int $approvedBy): bool;
 
     /**
      * @param int|null $createdBy filter kepemilikan (Sales cuma boleh lihat

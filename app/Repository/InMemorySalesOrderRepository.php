@@ -50,20 +50,28 @@ final class InMemorySalesOrderRepository implements SalesOrderRepositoryInterfac
         return $saved;
     }
 
-    public function updateStatus(int $id, SalesOrderStatus $status): void
+    public function transitionStatus(int $id, array $expected, SalesOrderStatus $next): bool
     {
         $so = $this->salesOrders[$id] ?? null;
-        if ($so !== null) {
-            $this->salesOrders[$id] = new SalesOrder($so->id, $so->customerId, $so->warehouseId, $status, $so->createdBy, $so->approvedBy, $so->createdAt, $so->items);
+        if ($so === null || !in_array($so->status, $expected, true)) {
+            return false;
         }
+
+        $this->salesOrders[$id] = new SalesOrder($so->id, $so->customerId, $so->warehouseId, $next, $so->createdBy, $so->approvedBy, $so->createdAt, $so->items);
+
+        return true;
     }
 
-    public function approve(int $id, int $approvedBy): void
+    public function approve(int $id, int $approvedBy): bool
     {
         $so = $this->salesOrders[$id] ?? null;
-        if ($so !== null) {
-            $this->salesOrders[$id] = new SalesOrder($so->id, $so->customerId, $so->warehouseId, SalesOrderStatus::Approved, $so->createdBy, $approvedBy, $so->createdAt, $so->items);
+        if ($so === null || $so->status !== SalesOrderStatus::PendingApproval) {
+            return false;
         }
+
+        $this->salesOrders[$id] = new SalesOrder($so->id, $so->customerId, $so->warehouseId, SalesOrderStatus::Approved, $so->createdBy, $approvedBy, $so->createdAt, $so->items);
+
+        return true;
     }
 
     public function listAll(

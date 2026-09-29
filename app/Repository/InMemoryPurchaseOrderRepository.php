@@ -50,27 +50,39 @@ final class InMemoryPurchaseOrderRepository implements PurchaseOrderRepositoryIn
         return $saved;
     }
 
-    public function updateStatus(int $id, PurchaseOrderStatus $status): void
+    public function transitionStatus(int $id, array $expected, PurchaseOrderStatus $next): bool
     {
         $po = $this->purchaseOrders[$id] ?? null;
-        if ($po !== null) {
-            $this->purchaseOrders[$id] = new PurchaseOrder($po->id, $po->supplierId, $po->warehouseId, $status, $po->orderDate, $po->createdBy, $po->items);
+        if ($po === null || !in_array($po->status, $expected, true)) {
+            return false;
         }
+
+        $this->purchaseOrders[$id] = new PurchaseOrder($po->id, $po->supplierId, $po->warehouseId, $next, $po->orderDate, $po->createdBy, $po->items);
+
+        return true;
     }
 
-    public function incrementItemReceivedQty(int $itemId, int $delta): void
+    public function incrementItemReceivedQtyIfWithinOrdered(int $itemId, int $delta): bool
     {
         foreach ($this->purchaseOrders as $poId => $po) {
             foreach ($po->items as $index => $item) {
-                if ($item->id === $itemId) {
-                    $items = $po->items;
-                    $items[$index] = new PurchaseOrderItem($item->id, $item->purchaseOrderId, $item->productId, $item->qty, $item->buyPrice, $item->receivedQty + $delta);
-                    $this->purchaseOrders[$poId] = new PurchaseOrder($po->id, $po->supplierId, $po->warehouseId, $po->status, $po->orderDate, $po->createdBy, $items);
-
-                    return;
+                if ($item->id !== $itemId) {
+                    continue;
                 }
+
+                if ($item->receivedQty + $delta > $item->qty) {
+                    return false;
+                }
+
+                $items = $po->items;
+                $items[$index] = new PurchaseOrderItem($item->id, $item->purchaseOrderId, $item->productId, $item->qty, $item->buyPrice, $item->receivedQty + $delta);
+                $this->purchaseOrders[$poId] = new PurchaseOrder($po->id, $po->supplierId, $po->warehouseId, $po->status, $po->orderDate, $po->createdBy, $items);
+
+                return true;
             }
         }
+
+        return false;
     }
 
     public function listAll(

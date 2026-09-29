@@ -103,14 +103,27 @@ final class MySqlPurchaseOrderRepositoryTest extends TestCase
         self::assertSame($this->productId, $found->items[0]->productId);
     }
 
-    public function testUpdateStatusChangesStatus(): void
+    public function testTransitionStatusChangesStatusWhenCurrentStatusMatches(): void
     {
         $repository = new MySqlPurchaseOrderRepository($this->pdo);
         $saved = $repository->save($this->makePurchaseOrder());
 
-        $repository->updateStatus($saved->id, PurchaseOrderStatus::Ordered);
-
+        self::assertTrue($repository->transitionStatus($saved->id, [PurchaseOrderStatus::Draft], PurchaseOrderStatus::Ordered));
         self::assertSame(PurchaseOrderStatus::Ordered, $repository->findById($saved->id)->status);
+    }
+
+    public function testTransitionStatusRejectsWhenCurrentStatusNoLongerMatches(): void
+    {
+        $repository = new MySqlPurchaseOrderRepository($this->pdo);
+        $saved = $repository->save($this->makePurchaseOrder());
+        $repository->transitionStatus($saved->id, [PurchaseOrderStatus::Draft], PurchaseOrderStatus::Ordered);
+
+        // Transisi kedua memakai syarat lama (Draft) - persis situasi request
+        // konkuren yang membaca status sebelum request pertama commit.
+        $second = $repository->transitionStatus($saved->id, [PurchaseOrderStatus::Draft], PurchaseOrderStatus::Cancelled);
+
+        self::assertFalse($second);
+        self::assertSame(PurchaseOrderStatus::Ordered, $repository->findById($saved->id)->status, 'status tidak boleh tertimpa transisi yang syaratnya sudah basi');
     }
 
     public function testIncrementItemReceivedQtyAccumulates(): void
@@ -119,19 +132,38 @@ final class MySqlPurchaseOrderRepositoryTest extends TestCase
         $saved = $repository->save($this->makePurchaseOrder());
         $itemId = $saved->items[0]->id;
 
-        $repository->incrementItemReceivedQty($itemId, 4);
-        $repository->incrementItemReceivedQty($itemId, 3);
+        self::assertTrue($repository->incrementItemReceivedQtyIfWithinOrdered($itemId, 4));
+        self::assertTrue($repository->incrementItemReceivedQtyIfWithinOrdered($itemId, 3));
 
         $found = $repository->findById($saved->id);
         self::assertSame(7, $found->items[0]->receivedQty);
         self::assertSame(3, $found->items[0]->remainingQty());
     }
 
+    public function testIncrementItemReceivedQtyRejectsWhenItWouldExceedOrderedQty(): void
+    {
+        $repository = new MySqlPurchaseOrderRepository($this->pdo);
+        $saved = $repository->save($this->makePurchaseOrder());
+        $itemId = $saved->items[0]->id;
+        $orderedQty = $saved->items[0]->qty;
+
+        self::assertTrue($repository->incrementItemReceivedQtyIfWithinOrdered($itemId, $orderedQty));
+
+        // Penerimaan kedua atas item yang sudah penuh - inilah yang dulu bisa
+        // membuat received_qty melebihi qty yang dipesan saat dua goods receipt
+        // berjalan bersamaan.
+        self::assertFalse($repository->incrementItemReceivedQtyIfWithinOrdered($itemId, 1));
+
+        $found = $repository->findById($saved->id);
+        self::assertSame($orderedQty, $found->items[0]->receivedQty);
+        self::assertSame(0, $found->items[0]->remainingQty());
+    }
+
     public function testListAllFiltersBySearchAndStatus(): void
     {
         $repository = new MySqlPurchaseOrderRepository($this->pdo);
         $saved = $repository->save($this->makePurchaseOrder());
-        $repository->updateStatus($saved->id, PurchaseOrderStatus::Ordered);
+        $repository->transitionStatus($saved->id, [PurchaseOrderStatus::Draft], PurchaseOrderStatus::Ordered);
 
         $bySupplierName = $repository->listAll(search: 'Test Supplier PO ZZZ');
         self::assertNotEmpty(array_filter($bySupplierName, static fn (PurchaseOrder $po): bool => $po->id === $saved->id));
