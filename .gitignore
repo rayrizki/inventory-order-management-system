@@ -15,6 +15,7 @@
 .phpunit.cache/
 .phpunit.result.cache
 /docs/quality/static-analysis/*.cache
+/coverage/
 
 *.log
 .DS_Store
