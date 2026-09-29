@@ -44,7 +44,8 @@ final class UserController
         // USR-01: "Sales dan Warehouse Staff tidak dapat membuka halaman
         // atau endpoint administrasi user" - beda dari Produk, modul ini
         // Admin-only sepenuhnya termasuk untuk baca.
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $search = trim((string) ($_GET['q'] ?? ''));
         $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -87,7 +88,8 @@ final class UserController
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $user = null;
         $values = ['name' => '', 'email' => '', 'password' => '', 'role' => ''];
@@ -98,7 +100,8 @@ final class UserController
 
     public function create(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $values = $this->readInput();
 
@@ -116,7 +119,8 @@ final class UserController
 
     public function showEditForm(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $user = $this->userService->getUserById((int) $id);
         $values = ['name' => $user->name, 'email' => $user->email, 'password' => '', 'role' => $user->role->value];
@@ -127,7 +131,8 @@ final class UserController
 
     public function update(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $values = $this->readInput();
 
@@ -145,7 +150,8 @@ final class UserController
 
     public function toggleActive(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $user = $this->userService->getUserById((int) $id);
         $this->userService->setActive((int) $id, !$user->isActive);

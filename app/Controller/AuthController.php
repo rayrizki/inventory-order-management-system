@@ -43,9 +43,11 @@ final class AuthController
 
         // Session ID diperbarui setelah login berhasil (AUTH-01).
         $this->session->regenerateId();
+
+        // Hanya id yang disimpan - nama dan role dibaca ulang dari database
+        // setiap request oleh AuthGuard, supaya penonaktifan akun atau
+        // perubahan role langsung berlaku tanpa menunggu user logout.
         $this->session->set('user_id', $user->id);
-        $this->session->set('user_name', $user->name);
-        $this->session->set('user_role', $user->role->value);
 
         header('Location: /dashboard', true, 303);
         exit;

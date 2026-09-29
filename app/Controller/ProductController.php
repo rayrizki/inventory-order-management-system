@@ -114,7 +114,7 @@ final class ProductController
 
     public function show(string $id): void
     {
-        $this->guard->requireLogin();
+        $currentUser = $this->guard->requireLogin();
 
         $product = $this->productService->getProductById((int) $id);
         $categoryName = $this->categoryService->getCategoryById($product->categoryId)->name;
@@ -125,7 +125,8 @@ final class ProductController
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $product = null;
         $values = ['sku' => '', 'name' => '', 'category_id' => '', 'unit' => '', 'buy_price' => '', 'sell_price' => '', 'reorder_point' => ''];
@@ -137,7 +138,8 @@ final class ProductController
 
     public function create(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $values = $this->readInput();
 
@@ -156,7 +158,8 @@ final class ProductController
 
     public function showEditForm(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $product = $this->productService->getProductById((int) $id);
         $values = [
@@ -176,7 +179,8 @@ final class ProductController
 
     public function update(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $values = $this->readInput();
 
@@ -195,7 +199,8 @@ final class ProductController
 
     public function toggleActive(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $product = $this->productService->getProductById((int) $id);
         $this->productService->setActive((int) $id, !$product->isActive);

@@ -25,7 +25,8 @@ final class ReportController
 
     public function index(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         [$from, $to] = $this->resolveDateRange();
 
@@ -34,7 +35,8 @@ final class ReportController
 
     public function exportStockLedgerCsv(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         [$from, $to] = $this->resolveDateRange();
         $rows = $this->reportService->getStockLedgerReport($from, $to);
@@ -48,7 +50,8 @@ final class ReportController
 
     public function exportOrdersCsv(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         [$from, $to] = $this->resolveDateRange();
         $rows = $this->reportService->getOrdersReport($from, $to);

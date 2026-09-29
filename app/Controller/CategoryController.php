@@ -83,7 +83,8 @@ final class CategoryController
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $category = null;
         $values = ['name' => '', 'description' => ''];
@@ -94,7 +95,8 @@ final class CategoryController
 
     public function create(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $description = (string) ($_POST['description'] ?? '');
@@ -114,7 +116,8 @@ final class CategoryController
 
     public function showEditForm(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $category = $this->categoryService->getCategoryById((int) $id);
         $values = ['name' => $category->name, 'description' => $category->description ?? ''];
@@ -125,7 +128,8 @@ final class CategoryController
 
     public function update(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $description = (string) ($_POST['description'] ?? '');
@@ -145,7 +149,8 @@ final class CategoryController
 
     public function delete(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         try {
             $this->categoryService->deleteCategory((int) $id);

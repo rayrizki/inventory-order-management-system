@@ -59,7 +59,8 @@ final class PurchaseOrderController
 
     public function index(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), self::ALLOWED_ROLES);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, self::ALLOWED_ROLES);
 
         $search = trim((string) ($_GET['q'] ?? ''));
         $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -99,14 +100,16 @@ final class PurchaseOrderController
 
     public function show(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), self::ALLOWED_ROLES);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, self::ALLOWED_ROLES);
 
-        $this->renderShow((int) $id);
+        $this->renderShow($currentUser, (int) $id);
     }
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), self::ALLOWED_ROLES);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, self::ALLOWED_ROLES);
 
         $values = ['supplier_id' => '', 'warehouse_id' => '', 'order_date' => date('Y-m-d'), 'items' => []];
         $errors = [];
@@ -184,16 +187,16 @@ final class PurchaseOrderController
             header('Location: ' . self::LIST_URL . '/' . $id . '?result=' . $result, true, 303);
             exit;
         } catch (ValidationException $exception) {
-            $this->renderShow((int) $id, $exception->errors());
+            $this->renderShow($currentUser, (int) $id, $exception->errors());
         } catch (ConflictException $exception) {
-            $this->renderShow((int) $id, ['_general' => $exception->getMessage()]);
+            $this->renderShow($currentUser, (int) $id, ['_general' => $exception->getMessage()]);
         }
     }
 
     /**
      * @param array<string, string> $receiptErrors
      */
-    private function renderShow(int $id, array $receiptErrors = []): void
+    private function renderShow(\App\Session\CurrentUser $currentUser, int $id, array $receiptErrors = []): void
     {
         $purchaseOrder = $this->purchaseOrderService->getPurchaseOrderById($id);
         $supplier = $this->supplierService->getSupplierById($purchaseOrder->supplierId);

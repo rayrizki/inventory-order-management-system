@@ -84,9 +84,11 @@ try {
 
 // Wiring manual (constructor injection, tanpa DI container) - ARCH-01.
 $session = new PhpSessionAdapter();
-$authGuard = new AuthGuard($session);
 
 $userRepository = new MySqlUserRepository($pdo);
+// AuthGuard membaca ulang user dari repository setiap request, jadi harus
+// dibuat setelah $userRepository ada.
+$authGuard = new AuthGuard($session, $userRepository);
 $authService = new AuthService($userRepository);
 $authController = new AuthController($authService, $session);
 $userService = new UserService($userRepository);

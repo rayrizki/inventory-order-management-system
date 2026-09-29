@@ -85,7 +85,8 @@ final class SupplierController
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $supplier = null;
         $values = ['name' => '', 'contact' => '', 'address' => ''];
@@ -96,7 +97,8 @@ final class SupplierController
 
     public function create(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $contact = (string) ($_POST['contact'] ?? '');
@@ -117,7 +119,8 @@ final class SupplierController
 
     public function showEditForm(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $supplier = $this->supplierService->getSupplierById((int) $id);
         $values = ['name' => $supplier->name, 'contact' => $supplier->contact ?? '', 'address' => $supplier->address ?? ''];
@@ -128,7 +131,8 @@ final class SupplierController
 
     public function update(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $contact = (string) ($_POST['contact'] ?? '');
@@ -149,7 +153,8 @@ final class SupplierController
 
     public function toggleActive(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $supplier = $this->supplierService->getSupplierById((int) $id);
         $this->supplierService->setActive((int) $id, !$supplier->isActive);

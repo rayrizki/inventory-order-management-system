@@ -110,12 +110,13 @@ final class SalesOrderController
         $salesOrder = $this->salesOrderService->getSalesOrderById((int) $id);
         $this->assertCanView($currentUser, $salesOrder->createdBy);
 
-        $this->renderShow((int) $id);
+        $this->renderShow($currentUser, (int) $id);
     }
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), self::CREATE_ROLES);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, self::CREATE_ROLES);
 
         $values = ['customer_id' => '', 'warehouse_id' => '', 'items' => []];
         $errors = [];
@@ -221,11 +222,11 @@ final class SalesOrderController
             header('Location: ' . self::LIST_URL . '/' . $id . '?result=fulfilled', true, 303);
             exit;
         } catch (ConflictException $exception) {
-            $this->renderShow((int) $id, $exception->getMessage());
+            $this->renderShow($currentUser, (int) $id, $exception->getMessage());
         }
     }
 
-    private function renderShow(int $id, ?string $issueError = null): void
+    private function renderShow(\App\Session\CurrentUser $currentUser, int $id, ?string $issueError = null): void
     {
         $salesOrder = $this->salesOrderService->getSalesOrderById($id);
         $customer = $this->customerService->getCustomerById($salesOrder->customerId);

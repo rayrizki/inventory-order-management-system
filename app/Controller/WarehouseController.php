@@ -85,7 +85,8 @@ final class WarehouseController
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $warehouse = null;
         $values = ['name' => '', 'location' => ''];
@@ -96,7 +97,8 @@ final class WarehouseController
 
     public function create(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $location = (string) ($_POST['location'] ?? '');
@@ -116,7 +118,8 @@ final class WarehouseController
 
     public function showEditForm(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $warehouse = $this->warehouseService->getWarehouseById((int) $id);
         $values = ['name' => $warehouse->name, 'location' => $warehouse->location ?? ''];
@@ -127,7 +130,8 @@ final class WarehouseController
 
     public function update(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $location = (string) ($_POST['location'] ?? '');
@@ -147,7 +151,8 @@ final class WarehouseController
 
     public function toggleActive(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $warehouse = $this->warehouseService->getWarehouseById((int) $id);
         $this->warehouseService->setActive((int) $id, !$warehouse->isActive);

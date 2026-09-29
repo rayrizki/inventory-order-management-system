@@ -3,7 +3,10 @@
  * Partial pembuka layout aplikasi (topbar + sidebar).
  * Dipasangkan dengan shell-end.php di tiap halaman yang butuh sidebar.
  *
- * Variabel yang bisa diisi pemanggil sebelum require:
+ * Variabel yang HARUS sudah diisi Controller sebelum require:
+ * @var \App\Session\CurrentUser $currentUser Hasil AuthGuard::requireLogin().
+ *
+ * Variabel opsional:
  * @var string $pageTitle Judul halaman, tampil di tag <title> browser.
  * @var string $activeNav Key menu yang sedang aktif (lihat $navGroups).
  */
@@ -11,15 +14,15 @@
 $pageTitle = $pageTitle ?? 'Aplikasi';
 $activeNav = $activeNav ?? '';
 
-// Controller pemanggil sudah memastikan user login (AuthGuard::requireLogin())
-// sebelum require file ini - dipanggil ulang di sini murni untuk kebutuhan
-// tampilan (nama + role di sidebar), bukan pengecekan otorisasi baru.
-$shellSession = new \App\Session\PhpSessionAdapter();
-$currentUser = (new \App\Session\AuthGuard($shellSession))->requireLogin();
+// $currentUser datang dari Controller yang sudah memanggil requireLogin().
+// Sebelumnya file ini merakit sendiri PhpSessionAdapter + AuthGuard untuk
+// mendapatkannya - view jadi ikut melakukan wiring infrastruktur dan
+// pemeriksaan otorisasi, dua hal yang bukan tanggung jawabnya (ARCH-01).
+assert(isset($currentUser), 'shell-start.php butuh $currentUser dari Controller');
 
 // Dipakai tiap form POST di halaman ini (lihat Router::dispatch()) - satu
 // token per session, bukan dibuat ulang tiap kali file ini di-require.
-$csrfToken = (new \App\Session\CsrfToken($shellSession))->get();
+$csrfToken = (new \App\Session\CsrfToken(new \App\Session\PhpSessionAdapter()))->get();
 
 $roleLabels = [
     'Admin' => 'Admin',

@@ -85,7 +85,8 @@ final class CustomerController
 
     public function showCreateForm(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $customer = null;
         $values = ['name' => '', 'contact' => '', 'address' => ''];
@@ -96,7 +97,8 @@ final class CustomerController
 
     public function create(): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $contact = (string) ($_POST['contact'] ?? '');
@@ -117,7 +119,8 @@ final class CustomerController
 
     public function showEditForm(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $customer = $this->customerService->getCustomerById((int) $id);
         $values = ['name' => $customer->name, 'contact' => $customer->contact ?? '', 'address' => $customer->address ?? ''];
@@ -128,7 +131,8 @@ final class CustomerController
 
     public function update(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $name = (string) ($_POST['name'] ?? '');
         $contact = (string) ($_POST['contact'] ?? '');
@@ -149,7 +153,8 @@ final class CustomerController
 
     public function toggleActive(string $id): void
     {
-        $this->guard->requireRole($this->guard->requireLogin(), [Role::Admin]);
+        $currentUser = $this->guard->requireLogin();
+        $this->guard->requireRole($currentUser, [Role::Admin]);
 
         $customer = $this->customerService->getCustomerById((int) $id);
         $this->customerService->setActive((int) $id, !$customer->isActive);
