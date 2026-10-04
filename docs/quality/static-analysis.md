@@ -4,8 +4,16 @@
 
 [PHPStan](https://phpstan.org/) 1.12.34, dipasang sebagai dev dependency
 (`composer require --dev phpstan/phpstan`). Konfigurasi di `phpstan.neon`
-(root proyek) - menganalisis `app/`, `public/`, `config/`, dan `tests/`,
-mengecualikan `vendor/`.
+(root proyek) - menganalisis `app/`, `public/`, `config/`, `scripts/`, dan
+`tests/`, mengecualikan `vendor/`.
+
+> `scripts/` ditambahkan 2026-10-04 setelah uji clean rebuild menemukan
+> `scripts/check-low-stock.php` masih memanggil `listProducts()` dengan
+> parameter lama - rusak oleh refactor `ProductFilter` dan lolos justru
+> karena folder itu belum dianalisis. Test suite tidak menangkapnya (script
+> cron memang tidak punya unit test) dan smoke test HTTP juga tidak (script
+> ini sengaja di luar siklus request web, JOB-01). Yang menemukannya adalah
+> menjalankan scriptnya sungguhan dari build bersih.
 
 ## Perintah
 
@@ -68,19 +76,21 @@ dikejar tanpa mengorbankan waktu untuk fitur inti yang belum selesai).
 Tidak ada dari PHPStan. `[OK] No errors` di level 6.
 
 SonarLint (plugin editor, bukan bagian dari pipeline penilaian) masih
-memunculkan dua kategori peringatan yang sengaja tidak ditindaklanjuti:
+memunculkan satu kategori peringatan yang sengaja tidak ditindaklanjuti:
 
 - **"Remove this unused local variable"** pada Controller yang menyiapkan
-  variabel lalu `require` view (mis. `$products`, `$statusMessage`). Ini
+  variabel lalu `require_once` view (mis. `$products`, `$statusMessage`). Ini
   false positive: variabel itu memang dipakai, tapi oleh template yang
-  di-`require` ke scope yang sama - analisis per-file tidak bisa melihatnya.
-- **"Refactor this function to reduce its Cognitive Complexity"** pada
-  `validate()` milik `PurchaseOrderService`/`SalesOrderService`. Keduanya
-  memvalidasi header + seluruh baris item sekaligus dan mengumpulkan SEMUA
-  error dalam satu jalan (VAL-01: "input yang sudah diisi dipertahankan"),
-  jadi percabangannya memang banyak tapi linier dan sejenis. Memecahnya
-  menjadi beberapa method kecil hanya memindahkan percabangan itu, bukan
-  menghilangkannya - dicatat di tech-debt daripada direfaktor demi angka.
+  di-`require_once` ke scope yang sama - analisis per-file tidak bisa
+  melihatnya. SonarQube menandai 126 temuan sejenis sebagai *False Positive*
+  dengan bukti, lihat `sonarqube.md`.
+
+Peringatan **"Refactor this function to reduce its Cognitive Complexity"**
+pada `validate()` milik `PurchaseOrderService`/`SalesOrderService`/`ProductService`
+yang sebelumnya dicatat di sini **sudah tidak ada lagi** - ketiganya
+direfaktor pada 2026-10-04 (`validateItems()` + `validateItemRow()`, dan
+`validateNumericFields()` untuk Produk). Lihat refactor-log #9 dan
+tech-debt #16.
 
 ## Kenapa tidak PHP_CodeSniffer juga
 

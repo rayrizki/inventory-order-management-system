@@ -70,6 +70,16 @@ classDiagram
         +dispatch(string method, string path) void
     }
 
+    class SendsRedirects {
+        <<trait>>
+        -redirect(string url) never
+    }
+
+    class NormalizesSearchTerm {
+        <<trait>>
+        -normalizeSearch(string? search) string?
+    }
+
     class CsrfToken {
         -SessionInterface session
         +get() string
@@ -83,6 +93,9 @@ classDiagram
     CurrentUser --> Role
     Router --> CsrfToken : constructor injection (concrete)
     CsrfToken --> SessionInterface : constructor injection (interface)
+
+    note for SendsRedirects "Dipakai 9 Controller (Auth, Category, Customer, Product,\nPurchaseOrder, SalesOrder, Supplier, User, Warehouse).\nSatu-satunya cara Controller mengirim redirect - method\nbertipe `never` membuat `exit` tidak mungkin terlupa,\nkarena `header()` sendiri TIDAK menghentikan eksekusi.\nLihat refactor-log #8."
+    note for NormalizesSearchTerm "Dipakai 8 Service. Merapikan kata kunci pencarian\n(trim, string kosong jadi null) supaya Repository bisa\nmembedakan 'tanpa filter' dari 'cari string kosong'.\nPurchaseOrderService/SalesOrderService meng-alias method\nini karena punya aturan tambahan membuang awalan\nPO-/SO-. Lihat refactor-log #6."
 
     note for CurrentUser "BEDA dari initial: ada properti `name`\n(initial cuma id+role) - dibutuhkan\nsupaya sidebar bisa menampilkan\nnama user yang login, bukan cuma role"
 

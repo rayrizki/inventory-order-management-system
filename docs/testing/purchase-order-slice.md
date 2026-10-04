@@ -30,7 +30,12 @@ Catatan desain: `computeReceiptPlan()` diuji dengan entity `PurchaseOrder` buata
 
 | File | Jumlah | Skenario utama |
 |---|---|---|
-| `MySqlPurchaseOrderRepositoryTest` | 5 | `save()` insert header+item sekaligus; `findById()` memuat item; `updateStatus()` mengubah status; `incrementItemReceivedQty()` terakumulasi (bukan menimpa); `listAll()` filter search (nomor PO **dan** nama supplier) serta status |
+| `MySqlPurchaseOrderRepositoryTest` | 9 | `save()` insert header+item sekaligus; `findById()` memuat item; `transitionStatus()` mengubah status **dan** menolak transisi yang syaratnya sudah basi; `incrementItemReceivedQtyIfWithinOrdered()` terakumulasi (bukan menimpa) **dan** menolak penerimaan yang melebihi qty dipesan; `listAll()` filter search (nomor PO **dan** nama supplier) serta status |
+
+> Diperbarui 2026-10-04: dua method yang semula tanpa syarat (`updateStatus()`,
+> `incrementItemReceivedQty()`) diganti versi bersyarat setelah audit
+> menemukan celah balapan - lihat ADR-0007. Jumlah test di kelas ini naik dari
+> 5 menjadi 9 karena tiap guard baru dibuktikan dengan test penolakannya.
 | `MySqlStockLedgerRepositoryTest` | 2 | `record()` insert dan dapat id; `findByReference()` hanya mengembalikan entry milik reference yang diminta, terurut sesuai waktu insert |
 | `GoodsReceiptServiceTest` (integration) | 3 | **Bukti PO-01 eksplisit**: penerimaan sebagian (4 dari 10) menambah `product_stock` dan menulis 1 baris `stock_ledger`, status jadi `PartiallyReceived`; penerimaan sisa (6 lagi) mengakumulasi stok jadi 10 (bukan menimpa) dan status jadi `Received`, dengan 2 baris ledger terpisah (satu per aksi); penerimaan qty melebihi sisa ditolak DAN tidak menulis apa pun ke `product_stock`/`stock_ledger`/status PO (bukan cuma ditolak, tapi juga tidak meninggalkan efek samping parsial) |
 

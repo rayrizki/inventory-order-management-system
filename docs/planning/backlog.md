@@ -75,7 +75,7 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 |---|---|---|---|
 | DESIGN-01 | Class diagram initial & as-built | Selesai | `docs/planning/class-diagram-initial.md`, `docs/architecture/class-diagram-as-built.md` (10 diagram, A-J, terus diperbarui per slice) |
 | DESIGN-02 | 2-3 ADR | Selesai (melebihi minimum) | 8 ADR di `docs/architecture/adr-*.md` |
-| DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai (melebihi minimum) | `docs/quality/refactor-log.md` (7 entri - 3 dari slice Kategori, 4 dari audit brief) + catatan audit SRP, `docs/quality/tech-debt.md` (18 entri), commit refactor `3848279`, `refactor: extract the duplicated search-term normaliser into a trait`, dan `refactor: share the Supplier and Customer view layer` |
+| DESIGN-03 | Refactor log (3 entri) + audit SRP + tech-debt register + 1 commit refactor | Selesai (melebihi minimum) | `docs/quality/refactor-log.md` (10 entri - 3 dari slice Kategori, 7 dari audit brief dan audit SonarQube) + catatan audit SRP, `docs/quality/tech-debt.md` (19 entri), commit refactor `3848279`, `refactor: extract the duplicated search-term normaliser into a trait`, `refactor: share the Supplier and Customer view layer`, dan `refactor: resolve the remaining 24 SonarQube code smells` |
 | DESIGN-04 | Critique exercise (cuplikan kode dari assessor) | Sebagian - menunggu cuplikan assessor | `docs/quality/critique.md` sudah ada berisi self-critique `list-controls.js` (smell, prinsip SOLID yang dilanggar, arah refactor); bagian untuk cuplikan assessor baru bisa diisi saat defense |
 
 ## 3.3 Testing
@@ -84,9 +84,9 @@ tercatat eksplisit sebagai gap. **Belum** = belum dikerjakan sama sekali.
 |---|---|---|---|
 | TEST-01 | Unit test terisolasi (min 6 test, 3 area) | Selesai (melebihi minimum) | 192 test total (131 unit + 61 integration), jauh dari 6 minimum, mencakup lebih dari 3 area logic |
 | TEST-02 | Integration test MySQL (min 3) | Selesai (melebihi minimum) | Termasuk bukti eksplisit oversell-prevention SO-01, dan skenario konkuren dua koneksi PDO untuk double-fulfil (ADR-0007) yang dipastikan gagal kalau guard-nya dilepas |
-| TEST-03 | Static analysis (PHPStan level 5+) | Selesai | PHPStan level 6, 0 error - `docs/quality/static-analysis.md` |
+| TEST-03 | Static analysis (PHPStan level 5+) | Selesai (melebihi minimum) | PHPStan level 6, 0 error - `docs/quality/static-analysis.md`. Ditambah **SonarQube Community 26.9.0.129388** (arahan mentor untuk presentasi final): 0 bug, 0 vulnerability, 0 security hotspot, rating A untuk reliability/security/maintainability, 0 temuan terbuka, coverage 62,5% - `docs/quality/sonarqube.md` |
 
-## Ringkasan status saat ini (2026-09-18)
+## Ringkasan status saat ini (2026-10-04)
 
 - **Selesai penuh**: 22 dari 24 item - seluruh alur inti brief §1.1
   ("Login -> Master Data -> Purchase Order -> Sales Order -> Stock Ledger

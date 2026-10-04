@@ -59,8 +59,10 @@ vs `receive()` dari ADR-0005.
 |---|---|
 | `save()` insert header+item sekaligus | |
 | `findById()` memuat SO beserta item | `approvedBy` null untuk SO baru |
-| `updateStatus()` mengubah status | |
+| `transitionStatus()` mengubah status saat syaratnya terpenuhi | |
+| `transitionStatus()` MENOLAK saat status sudah berubah duluan | Ditambahkan 2026-10-04 (ADR-0007) - inilah guard yang mencegah satu SO dipenuhi dua kali |
 | `approve()` mengubah status DAN `approved_by` dalam satu UPDATE | |
+| `approve()` menolak percobaan kedua sehingga `approved_by` tidak tertimpa | Ditambahkan 2026-10-04 |
 | `listAll()` filter search/status/**createdBy** | Termasuk bukti eksplisit: `createdBy` orang lain (id fiktif) tidak mengembalikan SO siapa pun - baris database sungguhan, bukan cuma logic PHP |
 | `listAll()` tidak memuat item (hindari N+1) | |
 

@@ -16,7 +16,7 @@ Slice yang sudah selesai:
 - **Manajemen User (USR-01)**: Admin dapat menambah/melihat/mengubah/menonaktifkan akun Sales dan Warehouse Staff (email unik, password di-hash). Modul ini Admin-only sepenuhnya termasuk untuk baca - Sales/Warehouse Staff mendapat 403 dan tidak melihat halamannya sama sekali.
 - **Penanganan error (ERR-01)**: exception tak terduga (bug kode, koneksi database putus) tidak lagi menampilkan stack trace ke user - dicatat ke log server, ditampilkan sebagai 500 generik.
 - **Endpoint JSON API (API-01)**: `GET /api/products/{sku}/availability` - stok per gudang dalam format JSON, autentikasi sama seperti halaman biasa, kode status 200/401/404 yang tepat.
-- **Static analysis (TEST-03)**: PHPStan level 6, 0 error. Lihat `docs/quality/static-analysis.md`.
+- **Static analysis (TEST-03)**: PHPStan level 6, 0 error (`docs/quality/static-analysis.md`) **dan** SonarQube Community 26.9 - 0 bug, 0 vulnerability, 0 security hotspot, rating A untuk reliability/security/maintainability, 0 temuan terbuka, coverage 62,5%. Perjalanan dari 240 temuan menjadi 0 beserta alasan tiap keputusan ada di `docs/quality/sonarqube.md`.
 - **Script terjadwal (JOB-01)**: `scripts/check-low-stock.php` - ringkasan produk di bawah reorder point, dijalankan manual lewat `docker compose exec app php scripts/check-low-stock.php`.
 - **Sales Order & Goods Issue (SO-01, ARCH-02)**: create SO (Draft) dengan banyak item, ajukan untuk persetujuan (PendingApproval), Admin menyetujui (Approved), Warehouse Staff memproses goods issue dalam satu transaksi PDO yang mengurangi `product_stock` secara atomik (`decrementIfSufficient()`, mencegah oversell - lihat ADR-0006) dan menulis `stock_ledger`, status otomatis Fulfilled. Segregation of duty §1.2 ditegakkan penuh: Sales cuma boleh membuat/mengajukan/membatalkan order **miliknya sendiri** dan tidak pernah bisa approve (termasuk order sendiri); Admin akses penuh; Warehouse Staff cuma memproses goods issue pada SO Approved. Goods issue bersifat all-or-nothing (beda dari goods receipt PO yang boleh parsial) - satu item stok tidak cukup membatalkan seluruh transaksi.
 
@@ -63,6 +63,22 @@ docker compose exec app vendor/bin/phpstan analyse --memory-limit=512M
 ```
 
 PHPStan level 6, 0 error - lihat `docs/quality/static-analysis.md` untuk detail.
+
+### Coverage
+
+```bash
+docker compose exec app php -d pcov.enabled=1 vendor/bin/phpunit --coverage-clover coverage/clover.xml
+```
+
+PCOV sudah terpasang di image tapi dimatikan secara default (`docker/pcov.ini`)
+supaya tidak membebani request biasa - diaktifkan per-perintah seperti di atas.
+
+### SonarQube
+
+Perintah lengkap menjalankan server dan scanner ada di
+`docs/quality/sonarqube.md`, bersama seluruh temuan beserta keputusannya
+(mana yang diperbaiki, mana yang false positive dengan buktinya, mana yang
+diterima dan kenapa).
 
 ## Struktur proyek
 

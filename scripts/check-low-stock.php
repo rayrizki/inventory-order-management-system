@@ -20,6 +20,7 @@ use App\Repository\MySqlCategoryRepository;
 use App\Repository\MySqlProductRepository;
 use App\Repository\MySqlProductStockRepository;
 use App\Repository\MySqlWarehouseRepository;
+use App\Repository\ProductFilter;
 use App\Service\ProductService;
 use App\Service\StockService;
 
@@ -38,7 +39,7 @@ $stockService = new StockService($productStockRepository, $warehouseRepository);
 // di codebase ini untuk kebutuhan "ambil semua" tanpa method baru).
 const ALL_PRODUCTS_LIMIT = 10000;
 
-$products = $productService->listProducts(isActive: true, perPage: ALL_PRODUCTS_LIMIT);
+$products = $productService->listProducts(new ProductFilter(isActive: true), perPage: ALL_PRODUCTS_LIMIT);
 
 $lowStock = [];
 foreach ($products as $product) {

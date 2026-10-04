@@ -4,6 +4,7 @@ parameters:
         - app
         - public
         - config
+        - scripts
         - tests
     excludePaths:
         - vendor/*

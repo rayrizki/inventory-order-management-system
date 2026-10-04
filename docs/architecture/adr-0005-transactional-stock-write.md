@@ -41,13 +41,22 @@ jawab berbeda:
      transaksi dibuka - kalau invalid, tidak ada `beginTransaction()` yang
      perlu di-rollback sama sekali).
    - Baru setelah valid: `$this->pdo->beginTransaction()`, lalu untuk tiap
-     item dalam rencana - `incrementItemReceivedQty()`,
+     item dalam rencana - `incrementItemReceivedQtyIfWithinOrdered()`,
      `ProductStockRepositoryInterface::incrementQuantity()` (upsert atomik
      `INSERT ... ON DUPLICATE KEY UPDATE`), `StockLedgerRepositoryInterface::record()`
      - baca ulang status PO (apakah semua item sudah `remainingQty() === 0`)
      untuk menentukan status baru (`Received`/`PartiallyReceived`), lalu
      `commit()`. Exception apa pun di tengah jalan -> `rollBack()` lalu
      dilempar ulang.
+
+   > **Sebagian digantikan ADR-0007 (2026-10-04).** Saat ADR ini ditulis,
+   > penambahan `received_qty` dan penulisan status PO masih berupa UPDATE
+   > tanpa syarat. Audit kemudian menemukan itu menyisakan celah balapan
+   > (dua penerimaan konkuren bisa membuat `received_qty` melebihi qty yang
+   > dipesan), sehingga keduanya diganti menjadi write bersyarat:
+   > `incrementItemReceivedQtyIfWithinOrdered()` dan `transitionStatus()`.
+   > Struktur transaksi dan alasan PDO masuk ke Service - inti ADR ini -
+   > tidak berubah.
    - Diuji lewat `tests/Integration/Service/GoodsReceiptServiceTest.php`
      dengan MySQL sungguhan di Docker (TEST-02) - membuktikan tiga tabel
      benar-benar konsisten setelah satu aksi, termasuk skenario penerimaan

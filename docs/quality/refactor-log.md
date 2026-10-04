@@ -2,9 +2,10 @@
 
 Tiga entri pertama terjadi di dalam satu vertical slice yang sama (Kategori) -
 ditemukan dan diperbaiki sambil fitur berkembang, bukan dicari-cari di akhir
-untuk memenuhi checklist. Entri 4-10 berasal dari audit menyeluruh terhadap
-brief setelah seluruh slice selesai: ketiganya memperbaiki kode lama yang
-sudah berjalan, bukan fitur yang sedang dikerjakan (Boy Scout Rule).
+untuk memenuhi checklist. Entri 4-10 berasal dari dua audit setelah seluruh
+slice selesai - audit menyeluruh terhadap brief (4-7) dan tindak lanjut
+temuan SonarQube (8-10). Ketujuhnya memperbaiki kode lama yang sudah
+berjalan, bukan fitur yang sedang dikerjakan (Boy Scout Rule).
 
 ## 1. Duplicate Code -> Extract Constant (`CategoryController::LIST_URL`)
 
