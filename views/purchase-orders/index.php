@@ -16,33 +16,37 @@ $pageTitle = 'Purchase Order';
 $activeNav = 'purchase-orders';
 require_once __DIR__ . '/../layout/shell-start.php';
 
-$buildPageUrl = static function (int $targetPage) use ($search, $statusKey, $perPage, $sortDir): string {
+// Satu sumber untuk URL daftar, dipakai ketiga pembangun URL di bawah
+// (pagination, sort, hapus pencarian) supaya tidak bisa saling menyimpang.
+$listUrl = '/purchase-orders';
+
+$buildPageUrl = static function (int $targetPage) use ($listUrl, $search, $statusKey, $perPage, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'dir' => $sortDir, 'status' => $statusKey];
     if ($search !== '') {
         $query['q'] = $search;
     }
 
-    return '/purchase-orders?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
 // Beda dari buildPageUrl(1): tombol X di search box harus menghapus q,
 // bukan cuma reset ke halaman 1 - kalau pakai buildPageUrl(1) di sini, q
 // ikut ditambahkan lagi karena $search masih terisi (tombol X cuma tampil
 // saat $search !== ''), jadi pencariannya tidak pernah benar-benar hilang.
-$buildClearSearchUrl = static function () use ($statusKey, $perPage, $sortDir): string {
+$buildClearSearchUrl = static function () use ($listUrl, $statusKey, $perPage, $sortDir): string {
     $query = ['page' => 1, 'per_page' => $perPage, 'dir' => $sortDir, 'status' => $statusKey];
 
-    return '/purchase-orders?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
-$buildSortUrl = static function () use ($search, $statusKey, $perPage, $sortDir): string {
+$buildSortUrl = static function () use ($listUrl, $search, $statusKey, $perPage, $sortDir): string {
     $nextDir = $sortDir === 'asc' ? 'desc' : 'asc';
     $query = ['page' => 1, 'per_page' => $perPage, 'dir' => $nextDir, 'status' => $statusKey];
     if ($search !== '') {
         $query['q'] = $search;
     }
 
-    return '/purchase-orders?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
 // Heroicons chevron-up/chevron-down (24x24), ditampilkan mengecil jadi 12px.

@@ -70,16 +70,13 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
     }
 
     public function listAll(
-        ?string $search = null,
-        ?int $categoryId = null,
-        ?bool $isActive = null,
-        ?string $stockStatus = null,
+        ProductFilter $filter = new ProductFilter(),
         int $limit = 10,
         int $offset = 0,
         string $sortBy = 'name',
         string $sortDir = 'asc',
     ): array {
-        $products = $this->filtered($search, $categoryId, $isActive, $stockStatus);
+        $products = $this->filtered($filter);
 
         usort($products, static function (Product $a, Product $b) use ($sortBy, $sortDir): int {
             $valueA = $sortBy === 'sku' ? $a->sku : $a->name;
@@ -92,9 +89,9 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
         return array_slice($products, $offset, $limit);
     }
 
-    public function countAll(?string $search = null, ?int $categoryId = null, ?bool $isActive = null, ?string $stockStatus = null): int
+    public function countAll(ProductFilter $filter = new ProductFilter()): int
     {
-        return count($this->filtered($search, $categoryId, $isActive, $stockStatus));
+        return count($this->filtered($filter));
     }
 
     public function setActive(int $id, bool $isActive): void
@@ -130,8 +127,13 @@ final class InMemoryProductRepository implements ProductRepositoryInterface
     /**
      * @return Product[]
      */
-    private function filtered(?string $search, ?int $categoryId, ?bool $isActive, ?string $stockStatus = null): array
+    private function filtered(ProductFilter $filter): array
     {
+        $search = $filter->search;
+        $categoryId = $filter->categoryId;
+        $isActive = $filter->isActive;
+        $stockStatus = $filter->stockStatus;
+
         $products = array_values($this->products);
 
         if ($search !== null && $search !== '') {

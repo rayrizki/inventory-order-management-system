@@ -192,47 +192,8 @@ final class SalesOrderService
             $errors['warehouse_id'] = 'Gudang asal wajib dipilih dan valid.';
         }
 
-        $items = [];
-        if ($itemsInput === []) {
-            $errors['items'] = 'SO harus memiliki minimal satu item.';
-        } else {
-            foreach ($itemsInput as $index => $itemInput) {
-                $productIdRaw = trim((string) ($itemInput['product_id'] ?? ''));
-                $qtyRaw = trim((string) ($itemInput['qty'] ?? ''));
-                $sellPriceRaw = trim((string) ($itemInput['sell_price'] ?? ''));
-
-                if ($productIdRaw === '' && $qtyRaw === '' && $sellPriceRaw === '') {
-                    continue;
-                }
-
-                $productId = ctype_digit($productIdRaw) ? (int) $productIdRaw : null;
-                $product = $productId !== null ? $this->products->findById($productId) : null;
-                $rowValid = true;
-
-                if ($product === null || !$product->isActive) {
-                    $errors["items.$index.product_id"] = 'Produk wajib dipilih dan aktif.';
-                    $rowValid = false;
-                }
-
-                if (!ctype_digit($qtyRaw) || (int) $qtyRaw <= 0) {
-                    $errors["items.$index.qty"] = 'Qty harus bilangan bulat positif.';
-                    $rowValid = false;
-                }
-
-                if (!is_numeric($sellPriceRaw) || (float) $sellPriceRaw < 0) {
-                    $errors["items.$index.sell_price"] = 'Harga jual harus angka dan tidak boleh negatif.';
-                    $rowValid = false;
-                }
-
-                if ($rowValid) {
-                    $items[] = new SalesOrderItem(null, null, $productId, (int) $qtyRaw, (float) $sellPriceRaw);
-                }
-            }
-
-            if ($items === [] && !isset($errors['items'])) {
-                $errors['items'] = 'SO harus memiliki minimal satu item yang valid.';
-            }
-        }
+        [$items, $itemErrors] = $this->validateItems($itemsInput);
+        $errors += $itemErrors;
 
         if ($errors !== []) {
             throw new ValidationException($errors);
@@ -243,6 +204,80 @@ final class SalesOrderService
             'warehouse_id' => $warehouseId,
             'items' => $items,
         ];
+    }
+
+    /**
+     * Validasi baris item dipisah dari validasi header (customer, gudang)
+     * karena keduanya dua hal berbeda: header satu nilai per field, item N
+     * baris yang masing-masing divalidasi sendiri. Pemisahan yang sama
+     * dilakukan di PurchaseOrderService - lihat alasan lengkapnya di sana.
+     *
+     * @param array<int, mixed> $itemsInput
+     * @return array{0: SalesOrderItem[], 1: array<string, string>}
+     */
+    private function validateItems(array $itemsInput): array
+    {
+        if ($itemsInput === []) {
+            return [[], ['items' => 'SO harus memiliki minimal satu item.']];
+        }
+
+        $items = [];
+        $errors = [];
+
+        foreach ($itemsInput as $index => $itemInput) {
+            [$item, $rowErrors] = $this->validateItemRow((int) $index, $itemInput);
+            $errors += $rowErrors;
+
+            if ($item !== null) {
+                $items[] = $item;
+            }
+        }
+
+        if ($items === []) {
+            $errors['items'] = 'SO harus memiliki minimal satu item yang valid.';
+        }
+
+        return [$items, $errors];
+    }
+
+    /**
+     * Satu baris item: mengembalikan item kalau seluruh fieldnya valid, atau
+     * kumpulan error per field kalau tidak. Baris yang SELURUHNYA kosong
+     * mengembalikan [null, []] - dianggap tidak diisi, bukan salah isi.
+     *
+     * @return array{0: SalesOrderItem|null, 1: array<string, string>}
+     */
+    private function validateItemRow(int $index, mixed $itemInput): array
+    {
+        $productIdRaw = trim((string) ($itemInput['product_id'] ?? ''));
+        $qtyRaw = trim((string) ($itemInput['qty'] ?? ''));
+        $sellPriceRaw = trim((string) ($itemInput['sell_price'] ?? ''));
+
+        if ($productIdRaw === '' && $qtyRaw === '' && $sellPriceRaw === '') {
+            return [null, []];
+        }
+
+        $productId = ctype_digit($productIdRaw) ? (int) $productIdRaw : null;
+        $product = $productId !== null ? $this->products->findById($productId) : null;
+        $errors = [];
+
+        if ($product === null || !$product->isActive) {
+            $errors["items.$index.product_id"] = 'Produk wajib dipilih dan aktif.';
+        }
+
+        if (!ctype_digit($qtyRaw) || (int) $qtyRaw <= 0) {
+            $errors["items.$index.qty"] = 'Qty harus bilangan bulat positif.';
+        }
+
+        if (!is_numeric($sellPriceRaw) || (float) $sellPriceRaw < 0) {
+            $errors["items.$index.sell_price"] = 'Harga jual harus angka dan tidak boleh negatif.';
+        }
+
+        if ($errors !== []) {
+            return [null, $errors];
+        }
+
+        return [new SalesOrderItem(null, null, $productId, (int) $qtyRaw, (float) $sellPriceRaw), []];
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Entity\Category;
 use App\Entity\Product;
 use App\Repository\MySqlCategoryRepository;
 use App\Repository\MySqlProductRepository;
+use App\Repository\ProductFilter;
 use PDO;
 use PHPUnit\Framework\TestCase;
 
@@ -122,20 +123,20 @@ final class MySqlProductRepositoryTest extends TestCase
 
         $bySku = array_map(
             static fn (Product $product): string => $product->name,
-            $repository->listAll(search: 'TEST-SKU-ZZZ'),
+            $repository->listAll(new ProductFilter(search: 'TEST-SKU-ZZZ')),
         );
         self::assertContains('Test Produk Unik ZZZ', $bySku, 'search harus mencocokkan kolom sku, bukan cuma name');
 
         $byCategory = array_map(
             static fn (Product $product): string => $product->name,
-            $repository->listAll(categoryId: $this->categoryId),
+            $repository->listAll(new ProductFilter(categoryId: $this->categoryId)),
         );
         self::assertContains('Test Produk Unik ZZZ', $byCategory);
 
         $repository->setActive($saved->id, false);
         $activeOnly = array_map(
             static fn (Product $product): string => $product->name,
-            $repository->listAll(search: 'Test Produk Unik ZZZ', isActive: true),
+            $repository->listAll(new ProductFilter(search: 'Test Produk Unik ZZZ', isActive: true)),
         );
         self::assertNotContains('Test Produk Unik ZZZ', $activeOnly, 'harus tersaring saat filter isActive=true karena baris ini dinonaktifkan');
     }
@@ -156,13 +157,13 @@ final class MySqlProductRepositoryTest extends TestCase
 
         $lowNames = array_map(
             static fn (Product $product): string => $product->name,
-            $repository->listAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low'),
+            $repository->listAll(new ProductFilter(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low')),
         );
         self::assertContains('Test Produk Tanpa Stok ZZZ', $lowNames, 'produk tanpa baris product_stock harus dianggap stok 0 (LOW), bukan dikecualikan');
 
         $normalNames = array_map(
             static fn (Product $product): string => $product->name,
-            $repository->listAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal'),
+            $repository->listAll(new ProductFilter(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal')),
         );
         self::assertNotContains('Test Produk Tanpa Stok ZZZ', $normalNames);
 
@@ -177,8 +178,8 @@ final class MySqlProductRepositoryTest extends TestCase
         // di sini secara eksplisit supaya regresi ini tidak lolos lagi
         // tanpa terdeteksi test (listAll() saja tidak cukup untuk
         // membuktikan countAll() bekerja).
-        self::assertSame(1, $repository->countAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low'));
-        self::assertSame(0, $repository->countAll(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal'));
+        self::assertSame(1, $repository->countAll(new ProductFilter(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'low')));
+        self::assertSame(0, $repository->countAll(new ProductFilter(search: 'Test Produk Tanpa Stok ZZZ', stockStatus: 'normal')));
     }
 
     /**

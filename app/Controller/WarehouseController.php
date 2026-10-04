@@ -11,6 +11,8 @@ use App\Session\AuthGuard;
 
 final class WarehouseController
 {
+    use SendsRedirects;
+
     /** Pilihan baris per halaman yang boleh diminta lewat ?per_page= - selain ini diabaikan. */
     private const ALLOWED_PER_PAGE = [5, 10, 25, 50, 100];
 
@@ -25,6 +27,9 @@ final class WarehouseController
     ];
 
     private const LIST_URL = '/warehouses';
+
+    /** Form non-modal: fallback tanpa JavaScript dan tampilan saat validasi gagal. */
+    private const FORM_VIEW = __DIR__ . '/../../views/warehouses/form.php';
 
     private const STATUS_MESSAGES = [
         'created' => ['type' => 'success', 'text' => 'Gudang berhasil ditambahkan.'],
@@ -73,8 +78,7 @@ final class WarehouseController
                 $query['q'] = $search;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
         $warehouses = $this->warehouseService->listWarehouses($search, $isActive, $page, $perPage, $sortBy, $sortDir);
@@ -92,7 +96,7 @@ final class WarehouseController
         $values = ['name' => '', 'location' => ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/warehouses/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function create(): void
@@ -105,14 +109,13 @@ final class WarehouseController
 
         try {
             $this->warehouseService->createWarehouse($name, $location);
-            header('Location: ' . self::LIST_URL . '?result=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=created');
         } catch (ValidationException $exception) {
             $warehouse = null;
             $values = ['name' => $name, 'location' => $location];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/warehouses/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -125,7 +128,7 @@ final class WarehouseController
         $values = ['name' => $warehouse->name, 'location' => $warehouse->location ?? ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/warehouses/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function update(string $id): void
@@ -138,14 +141,13 @@ final class WarehouseController
 
         try {
             $this->warehouseService->updateWarehouse((int) $id, $name, $location);
-            header('Location: ' . self::LIST_URL . '?result=updated', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=updated');
         } catch (ValidationException $exception) {
             $warehouse = $this->warehouseService->getWarehouseById((int) $id);
             $values = ['name' => $name, 'location' => $location];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/warehouses/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -158,7 +160,6 @@ final class WarehouseController
         $this->warehouseService->setActive((int) $id, !$warehouse->isActive);
 
         $result = $warehouse->isActive ? 'deactivated' : 'activated';
-        header('Location: ' . self::LIST_URL . '?result=' . $result, true, 303);
-        exit;
+        $this->redirect(self::LIST_URL . '?result=' . $result);
     }
 }

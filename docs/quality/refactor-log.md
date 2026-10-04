@@ -2,7 +2,7 @@
 
 Tiga entri pertama terjadi di dalam satu vertical slice yang sama (Kategori) -
 ditemukan dan diperbaiki sambil fitur berkembang, bukan dicari-cari di akhir
-untuk memenuhi checklist. Entri 4-7 berasal dari audit menyeluruh terhadap
+untuk memenuhi checklist. Entri 4-10 berasal dari audit menyeluruh terhadap
 brief setelah seluruh slice selesai: ketiganya memperbaiki kode lama yang
 sudah berjalan, bukan fitur yang sedang dikerjakan (Boy Scout Rule).
 
@@ -375,3 +375,130 @@ modul, modal tambah, form ubah, pencarian dengan sort + per_page, filter
 status) direkam sebelum dan sesudah, dibandingkan baris per baris - **nol
 perbedaan**. Aksi POST diuji terpisah (toggle aktif/nonaktif dua kali sampai
 kembali ke nilai semula). 192 test tetap lulus.
+
+## 8. Duplicate Code + risiko lupa `exit` -> Extract Trait (`SendsRedirects`)
+
+**Smell**: pasangan `header('Location: ...', true, 303); exit;` ditulis 44
+kali di sembilan Controller; literal `"Location: "` sendiri berulang 4-9 kali
+per file (SonarQube `php:S1192`).
+
+Yang membuatnya lebih dari sekadar duplikasi: `header()` **tidak**
+menghentikan eksekusi. Lupa menulis `exit` setelahnya membuat kode di
+bawahnya tetap berjalan dan body response ikut terkirim di belakang header
+redirect - bug yang tidak terlihat sampai ada yang memeriksa response mentah.
+
+**Teknik**: Extract Trait, dengan method bertipe `never`.
+
+Sebelum (diulang 44 kali):
+```php
+header('Location: ' . self::LIST_URL . '?status=created', true, 303);
+exit;
+```
+
+Sesudah:
+```php
+// app/Controller/SendsRedirects.php
+trait SendsRedirects
+{
+    private function redirect(string $url): never
+    {
+        header('Location: ' . $url, true, 303);
+        exit;
+    }
+}
+
+// pemanggil
+$this->redirect(self::LIST_URL . '?status=created');
+```
+
+Tipe `never` membuat kelalaian itu tidak mungkin lagi, dan PHPStan ikut
+memverifikasi tidak ada kode tak terjangkau sesudahnya. Blok `try/catch` yang
+dulu menaruh satu `exit;` bersama di luar catch kini tiap cabangnya
+mengembalikan sendiri - perilakunya sama, alurnya lebih jelas.
+
+Diverifikasi lewat HTTP, bukan hanya test: login benar (303 ke `/dashboard`),
+login salah (303 ke `/login`), CRUD (`?status=created`), dan cabang
+`try/catch` (`?result=cannot_transition`).
+
+## 9. Long Method -> Extract Method (`validate()` di PurchaseOrderService, SalesOrderService, ProductService)
+
+**Smell**: cognitive complexity 42, 40, dan 17 (ambang 15, SonarQube
+`php:S3776`). Ketiganya menggabungkan dua hal berbeda dalam satu method -
+validasi header (satu nilai per field) dan validasi baris item (N baris yang
+masing-masing punya aturan sendiri).
+
+**Teknik**: Extract Method, dua tingkat, mengikuti batas yang memang ada di
+domainnya.
+
+Sebelum (PurchaseOrderService, ~65 baris dalam satu method):
+```php
+private function validate(array $input): array
+{
+    // ... validasi supplier, gudang, tanggal ...
+    $items = [];
+    if ($itemsInput === []) {
+        $errors['items'] = '...';
+    } else {
+        foreach ($itemsInput as $index => $itemInput) {
+            // ... 3 pemeriksaan per baris, flag $rowValid ...
+        }
+        if ($items === [] && !isset($errors['items'])) { ... }
+    }
+    // ...
+}
+```
+
+Sesudah:
+```php
+private function validate(array $input): array
+{
+    // ... validasi header saja ...
+    [$items, $itemErrors] = $this->validateItems($itemsInput);
+    $errors += $itemErrors;
+    // ...
+}
+
+private function validateItems(array $itemsInput): array   // loop + rekap
+private function validateItemRow(int $index, mixed $itemInput): array  // satu baris
+```
+
+`validateItemRow()` mengembalikan `[item|null, errors]` sehingga flag
+`$rowValid` hilang - baris yang valid mengembalikan itemnya, yang tidak
+mengembalikan kumpulan errornya. Pengumpulan SELURUH error tetap
+dipertahankan (VAL-01: input yang sudah diisi tidak boleh hilang), jadi
+perilakunya tidak berubah - dibuktikan lewat HTTP dengan submit yang header
+dan itemnya sama-sama salah: kelima pesan error muncul bersamaan.
+
+## 10. Long Parameter List -> Introduce Parameter Object (`ProductFilter`)
+
+**Smell**: `ProductRepositoryInterface::listAll()` dan
+`ProductService::listProducts()` sama-sama punya 8 parameter (SonarQube
+`php:S107`).
+
+Tapi jumlah parameter bukan masalah sebenarnya. Masalahnya: `listAll()` dan
+`countAll()` **wajib** dipanggil dengan empat nilai filter yang identik -
+kalau berbeda, jumlah halaman pagination tidak cocok dengan baris yang
+benar-benar tampil. Kecocokan itu sebelumnya hanya dijaga kebiasaan, karena
+keempat nilainya dikirim terpisah ke dua method berbeda.
+
+**Teknik**: Introduce Parameter Object.
+
+Sebelum:
+```php
+$totalProducts = $this->productService->countProducts($search, $categoryId, $isActive, $stockStatusFilter);
+$products = $this->productService->listProducts($search, $categoryId, $isActive, $stockStatusFilter, $page, $perPage, $sortBy, $sortDir);
+```
+
+Sesudah:
+```php
+$filter = new ProductFilter($search, $categoryId, $isActive, $stockStatusFilter);
+
+$totalProducts = $this->productService->countProducts($filter);
+$products = $this->productService->listProducts($filter, $page, $perPage, $sortBy, $sortDir);
+```
+
+Hanya dimensi PENYARINGAN yang dibungkus; limit/offset/sort tetap parameter
+tersendiri karena itu urusan penyajian - `countAll()` butuh filternya tapi
+tidak pernah butuh pagination. Normalisasi kata kunci (trim, string kosong
+jadi null) pindah ke konstruktor `ProductFilter`, sehingga tidak ada pemanggil
+yang bisa lupa melakukannya.

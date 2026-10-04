@@ -10,6 +10,7 @@ use App\Exception\NotFoundException;
 use App\Exception\ValidationException;
 use App\Repository\InMemoryCategoryRepository;
 use App\Repository\InMemoryProductRepository;
+use App\Repository\ProductFilter;
 use App\Service\ProductService;
 use PHPUnit\Framework\TestCase;
 
@@ -170,7 +171,7 @@ final class ProductServiceTest extends TestCase
         ]);
         $service = $this->makeService($products, $categories);
 
-        $result = $service->listProducts(categoryId: 2);
+        $result = $service->listProducts(new ProductFilter(categoryId: 2));
 
         self::assertCount(1, $result);
         self::assertSame('Pulpen', $result[0]->name);
@@ -209,8 +210,8 @@ final class ProductServiceTest extends TestCase
         );
         $service = $this->makeService($products, $categories);
 
-        $low = $service->listProducts(stockStatus: 'low');
-        $normal = $service->listProducts(stockStatus: 'normal');
+        $low = $service->listProducts(new ProductFilter(stockStatus: 'low'));
+        $normal = $service->listProducts(new ProductFilter(stockStatus: 'normal'));
 
         self::assertCount(1, $low);
         self::assertSame('Stok Rendah', $low[0]->name);

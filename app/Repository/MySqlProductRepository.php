@@ -81,10 +81,7 @@ final class MySqlProductRepository implements ProductRepositoryInterface
     }
 
     public function listAll(
-        ?string $search = null,
-        ?int $categoryId = null,
-        ?bool $isActive = null,
-        ?string $stockStatus = null,
+        ProductFilter $filter = new ProductFilter(),
         int $limit = 10,
         int $offset = 0,
         string $sortBy = 'name',
@@ -93,7 +90,7 @@ final class MySqlProductRepository implements ProductRepositoryInterface
         $column = in_array($sortBy, self::SORTABLE_COLUMNS, true) ? 'p.' . $sortBy : 'p.name';
         $direction = strtolower($sortDir) === 'desc' ? 'DESC' : 'ASC';
 
-        [$where, $having, $params] = $this->buildFilter($search, $categoryId, $isActive, $stockStatus);
+        [$where, $having, $params] = $this->buildFilter($filter);
 
         // LEFT JOIN + GROUP BY dipakai untuk SEMUA query (bukan cuma saat
         // stockStatus diisi) supaya cuma ada satu bentuk query untuk
@@ -120,9 +117,9 @@ final class MySqlProductRepository implements ProductRepositoryInterface
         return array_map($this->hydrate(...), $statement->fetchAll());
     }
 
-    public function countAll(?string $search = null, ?int $categoryId = null, ?bool $isActive = null, ?string $stockStatus = null): int
+    public function countAll(ProductFilter $filter = new ProductFilter()): int
     {
-        [$where, $having, $params] = $this->buildFilter($search, $categoryId, $isActive, $stockStatus);
+        [$where, $having, $params] = $this->buildFilter($filter);
 
         $statement = $this->pdo->prepare(
             'SELECT COUNT(*) FROM (
@@ -162,8 +159,13 @@ final class MySqlProductRepository implements ProductRepositoryInterface
     /**
      * @return array{0: string, 1: string, 2: array<string, mixed>}
      */
-    private function buildFilter(?string $search, ?int $categoryId, ?bool $isActive, ?string $stockStatus = null): array
+    private function buildFilter(ProductFilter $filter): array
     {
+        $search = $filter->search;
+        $categoryId = $filter->categoryId;
+        $isActive = $filter->isActive;
+        $stockStatus = $filter->stockStatus;
+
         $conditions = [];
         $params = [];
 

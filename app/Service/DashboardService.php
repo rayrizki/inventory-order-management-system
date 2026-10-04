@@ -6,6 +6,7 @@ namespace App\Service;
 
 use App\Entity\PurchaseOrderStatus;
 use App\Entity\SalesOrderStatus;
+use App\Repository\ProductFilter;
 use App\Repository\ProductRepositoryInterface;
 use App\Repository\PurchaseOrderRepositoryInterface;
 use App\Repository\SalesOrderRepositoryInterface;
@@ -37,8 +38,8 @@ final class DashboardService
     {
         return [
             'inventoryValue' => $this->products->sumInventoryValue(),
-            'lowStockCount' => $this->products->countAll(stockStatus: 'low'),
-            'lowStockProducts' => $this->products->listAll(stockStatus: 'low', limit: self::LOW_STOCK_PREVIEW_LIMIT),
+            'lowStockCount' => $this->products->countAll(new ProductFilter(stockStatus: 'low')),
+            'lowStockProducts' => $this->products->listAll(new ProductFilter(stockStatus: 'low'), limit: self::LOW_STOCK_PREVIEW_LIMIT),
             'purchaseOrdersByStatus' => $this->purchaseOrders->countByStatus(),
             'salesOrdersByStatus' => $this->salesOrders->countByStatus(),
         ];
@@ -69,8 +70,8 @@ final class DashboardService
                 + $purchaseOrdersByStatus[PurchaseOrderStatus::PartiallyReceived->value],
             // "Antrean goods issue" - SO yang sudah Approved, menunggu diproses.
             'pendingIssueCount' => $salesOrdersByStatus[SalesOrderStatus::Approved->value],
-            'lowStockCount' => $this->products->countAll(stockStatus: 'low'),
-            'lowStockProducts' => $this->products->listAll(stockStatus: 'low', limit: self::LOW_STOCK_PREVIEW_LIMIT),
+            'lowStockCount' => $this->products->countAll(new ProductFilter(stockStatus: 'low')),
+            'lowStockProducts' => $this->products->listAll(new ProductFilter(stockStatus: 'low'), limit: self::LOW_STOCK_PREVIEW_LIMIT),
         ];
     }
 }

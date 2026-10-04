@@ -11,6 +11,8 @@ use App\Session\AuthGuard;
 
 final class CustomerController
 {
+    use SendsRedirects;
+
     /** Pilihan baris per halaman yang boleh diminta lewat ?per_page= - selain ini diabaikan. */
     private const ALLOWED_PER_PAGE = [5, 10, 25, 50, 100];
 
@@ -25,6 +27,9 @@ final class CustomerController
     ];
 
     private const LIST_URL = '/customers';
+
+    /** Form non-modal: fallback tanpa JavaScript dan tampilan saat validasi gagal. */
+    private const FORM_VIEW = __DIR__ . '/../../views/customers/form.php';
 
     private const STATUS_MESSAGES = [
         'created' => ['type' => 'success', 'text' => 'Customer berhasil ditambahkan.'],
@@ -73,8 +78,7 @@ final class CustomerController
                 $query['q'] = $search;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
         $customers = $this->customerService->listCustomers($search, $isActive, $page, $perPage, $sortBy, $sortDir);
@@ -92,7 +96,7 @@ final class CustomerController
         $values = ['name' => '', 'contact' => '', 'address' => ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/customers/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function create(): void
@@ -106,14 +110,13 @@ final class CustomerController
 
         try {
             $this->customerService->createCustomer($name, $contact, $address);
-            header('Location: ' . self::LIST_URL . '?result=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=created');
         } catch (ValidationException $exception) {
             $customer = null;
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/customers/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -126,7 +129,7 @@ final class CustomerController
         $values = ['name' => $customer->name, 'contact' => $customer->contact ?? '', 'address' => $customer->address ?? ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/customers/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function update(string $id): void
@@ -140,14 +143,13 @@ final class CustomerController
 
         try {
             $this->customerService->updateCustomer((int) $id, $name, $contact, $address);
-            header('Location: ' . self::LIST_URL . '?result=updated', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=updated');
         } catch (ValidationException $exception) {
             $customer = $this->customerService->getCustomerById((int) $id);
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/customers/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -160,7 +162,6 @@ final class CustomerController
         $this->customerService->setActive((int) $id, !$customer->isActive);
 
         $result = $customer->isActive ? 'deactivated' : 'activated';
-        header('Location: ' . self::LIST_URL . '?result=' . $result, true, 303);
-        exit;
+        $this->redirect(self::LIST_URL . '?result=' . $result);
     }
 }

@@ -6,6 +6,7 @@ namespace App\Controller;
 
 use App\Entity\Role;
 use App\Exception\ValidationException;
+use App\Repository\ProductFilter;
 use App\Service\CategoryService;
 use App\Service\ProductService;
 use App\Service\StockService;
@@ -13,6 +14,8 @@ use App\Session\AuthGuard;
 
 final class ProductController
 {
+    use SendsRedirects;
+
     /** Kategori dianggap "semua" untuk kebutuhan dropdown - jauh di atas jumlah kategori realistis. */
     private const CATEGORY_DROPDOWN_LIMIT = 1000;
 
@@ -33,6 +36,9 @@ final class ProductController
     private const STOCK_STATUS_FILTERS = ['low', 'normal', 'all'];
 
     private const LIST_URL = '/products';
+
+    /** Form non-modal: fallback tanpa JavaScript dan tampilan saat validasi gagal. */
+    private const FORM_VIEW = __DIR__ . '/../../views/products/form.php';
 
     private const STATUS_MESSAGES = [
         'created' => ['type' => 'success', 'text' => 'Produk berhasil ditambahkan.'],
@@ -83,7 +89,12 @@ final class ProductController
         }
         $sortDir = strtolower((string) ($_GET['dir'] ?? 'asc')) === 'desc' ? 'desc' : 'asc';
 
-        $totalProducts = $this->productService->countProducts($search, $categoryId, $isActive, $stockStatusFilter);
+        // Dibentuk sekali lalu dipakai untuk menghitung DAN mengambil baris -
+        // dua pemanggilan itu wajib memakai kriteria yang sama persis, kalau
+        // tidak jumlah halaman tidak cocok dengan isi tabelnya.
+        $filter = new ProductFilter($search, $categoryId, $isActive, $stockStatusFilter);
+
+        $totalProducts = $this->productService->countProducts($filter);
         $totalPages = max(1, (int) ceil($totalProducts / $perPage));
 
         if ($totalProducts > 0 && $page > $totalPages) {
@@ -97,11 +108,10 @@ final class ProductController
                 $query['category_id'] = $categoryId;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
-        $products = $this->productService->listProducts($search, $categoryId, $isActive, $stockStatusFilter, $page, $perPage, $sortBy, $sortDir);
+        $products = $this->productService->listProducts($filter, $page, $perPage, $sortBy, $sortDir);
         $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
         $categoryNames = [];
         foreach ($categories as $category) {
@@ -140,7 +150,7 @@ final class ProductController
         $errors = [];
         $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-        require_once __DIR__ . '/../../views/products/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function create(): void
@@ -152,14 +162,13 @@ final class ProductController
 
         try {
             $this->productService->createProduct($values);
-            header('Location: ' . self::LIST_URL . '?result=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=created');
         } catch (ValidationException $exception) {
             $product = null;
             $errors = $exception->errors();
             $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-            require_once __DIR__ . '/../../views/products/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -181,7 +190,7 @@ final class ProductController
         $errors = [];
         $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-        require_once __DIR__ . '/../../views/products/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function update(string $id): void
@@ -193,14 +202,13 @@ final class ProductController
 
         try {
             $this->productService->updateProduct((int) $id, $values);
-            header('Location: ' . self::LIST_URL . '?result=updated', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=updated');
         } catch (ValidationException $exception) {
             $product = $this->productService->getProductById((int) $id);
             $errors = $exception->errors();
             $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-            require_once __DIR__ . '/../../views/products/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -213,8 +221,7 @@ final class ProductController
         $this->productService->setActive((int) $id, !$product->isActive);
 
         $result = $product->isActive ? 'deactivated' : 'activated';
-        header('Location: ' . self::LIST_URL . '?result=' . $result, true, 303);
-        exit;
+        $this->redirect(self::LIST_URL . '?result=' . $result);
     }
 
     /**

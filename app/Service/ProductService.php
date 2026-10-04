@@ -8,6 +8,7 @@ use App\Entity\Product;
 use App\Exception\NotFoundException;
 use App\Exception\ValidationException;
 use App\Repository\CategoryRepositoryInterface;
+use App\Repository\ProductFilter;
 use App\Repository\ProductRepositoryInterface;
 
 final class ProductService
@@ -41,10 +42,7 @@ final class ProductService
      * @return Product[]
      */
     public function listProducts(
-        ?string $search = null,
-        ?int $categoryId = null,
-        ?bool $isActive = null,
-        ?string $stockStatus = null,
+        ProductFilter $filter = new ProductFilter(),
         int $page = 1,
         int $perPage = self::PER_PAGE,
         string $sortBy = 'name',
@@ -53,12 +51,12 @@ final class ProductService
         $perPage = max(1, $perPage);
         $offset = (max(1, $page) - 1) * $perPage;
 
-        return $this->products->listAll($this->normalizeSearch($search), $categoryId, $isActive, $stockStatus, $perPage, $offset, $sortBy, $sortDir);
+        return $this->products->listAll($filter, $perPage, $offset, $sortBy, $sortDir);
     }
 
-    public function countProducts(?string $search = null, ?int $categoryId = null, ?bool $isActive = null, ?string $stockStatus = null): int
+    public function countProducts(ProductFilter $filter = new ProductFilter()): int
     {
-        return $this->products->countAll($this->normalizeSearch($search), $categoryId, $isActive, $stockStatus);
+        return $this->products->countAll($filter);
     }
 
     public function getProductById(int $id): Product
@@ -197,17 +195,7 @@ final class ProductService
             $errors['category_id'] = 'Kategori wajib dipilih dan valid.';
         }
 
-        if (!is_numeric($buyPriceRaw) || (float) $buyPriceRaw < 0) {
-            $errors['buy_price'] = 'Harga beli harus angka dan tidak boleh negatif.';
-        }
-
-        if (!is_numeric($sellPriceRaw) || (float) $sellPriceRaw < 0) {
-            $errors['sell_price'] = 'Harga jual harus angka dan tidak boleh negatif.';
-        }
-
-        if (!ctype_digit($reorderPointRaw)) {
-            $errors['reorder_point'] = 'Reorder point harus bilangan bulat dan tidak boleh negatif.';
-        }
+        $errors += $this->validateNumericFields($buyPriceRaw, $sellPriceRaw, $reorderPointRaw);
 
         if ($errors !== []) {
             throw new ValidationException($errors);
@@ -223,6 +211,33 @@ final class ProductService
             'reorder_point' => (int) $reorderPointRaw,
             'image' => $image,
         ];
+    }
+
+    /**
+     * PRD-01: harga beli, harga jual, dan reorder point harus angka >= 0.
+     * Dipisah dari validate() karena ketiganya satu aturan yang sama diulang
+     * tiga kali, sementara sisanya aturan per-field yang berbeda-beda -
+     * memisahkannya juga menurunkan kerumitan validate() (php:S3776).
+     *
+     * @return array<string, string> kosong kalau ketiganya valid
+     */
+    private function validateNumericFields(string $buyPriceRaw, string $sellPriceRaw, string $reorderPointRaw): array
+    {
+        $errors = [];
+
+        if (!is_numeric($buyPriceRaw) || (float) $buyPriceRaw < 0) {
+            $errors['buy_price'] = 'Harga beli harus angka dan tidak boleh negatif.';
+        }
+
+        if (!is_numeric($sellPriceRaw) || (float) $sellPriceRaw < 0) {
+            $errors['sell_price'] = 'Harga jual harus angka dan tidak boleh negatif.';
+        }
+
+        if (!ctype_digit($reorderPointRaw)) {
+            $errors['reorder_point'] = 'Reorder point harus bilangan bulat dan tidak boleh negatif.';
+        }
+
+        return $errors;
     }
 
     /**

@@ -22,7 +22,11 @@ $pageTitle = 'Produk';
 $activeNav = 'products';
 require_once __DIR__ . '/../layout/shell-start.php';
 
-$buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
+// Satu sumber untuk URL daftar, dipakai ketiga pembangun URL di bawah
+// (pagination, sort, hapus pencarian) supaya tidak bisa saling menyimpang.
+$listUrl = '/products';
+
+$buildPageUrl = static function (int $targetPage) use ($listUrl, $search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status, 'stock_status' => $stockStatus];
     if ($search !== '') {
         $query['q'] = $search;
@@ -31,7 +35,7 @@ $buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $st
         $query['category_id'] = $categoryId;
     }
 
-    return '/products?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
 // Beda dari buildPageUrl(1): tombol X di search box harus menghapus q,
@@ -39,16 +43,16 @@ $buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $st
 // q ikut ditambahkan lagi karena $search masih terisi (tombol X cuma
 // tampil saat $search !== ''), jadi pencariannya tidak pernah benar-benar
 // hilang.
-$buildClearSearchUrl = static function () use ($categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
+$buildClearSearchUrl = static function () use ($listUrl, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
     $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status, 'stock_status' => $stockStatus];
     if ($categoryId !== null) {
         $query['category_id'] = $categoryId;
     }
 
-    return '/products?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
-$buildSortUrl = static function (string $column) use ($search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
+$buildSortUrl = static function (string $column) use ($listUrl, $search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
     $nextDir = ($sortBy === $column && $sortDir === 'asc') ? 'desc' : 'asc';
     $query = ['page' => 1, 'per_page' => $perPage, 'sort' => $column, 'dir' => $nextDir, 'status' => $status, 'stock_status' => $stockStatus];
     if ($search !== '') {
@@ -58,7 +62,7 @@ $buildSortUrl = static function (string $column) use ($search, $categoryId, $sta
         $query['category_id'] = $categoryId;
     }
 
-    return '/products?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
 // Heroicons chevron-up/chevron-down (24x24), ditampilkan mengecil jadi 12px

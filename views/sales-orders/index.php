@@ -19,29 +19,33 @@ require_once __DIR__ . '/../layout/shell-start.php';
 
 $canCreate = $currentUser->role === \App\Entity\Role::Admin || $currentUser->role === \App\Entity\Role::Sales;
 
-$buildPageUrl = static function (int $targetPage) use ($search, $statusKey, $perPage, $sortDir): string {
+// Satu sumber untuk URL daftar, dipakai ketiga pembangun URL di bawah
+// (pagination, sort, hapus pencarian) supaya tidak bisa saling menyimpang.
+$listUrl = '/sales-orders';
+
+$buildPageUrl = static function (int $targetPage) use ($listUrl, $search, $statusKey, $perPage, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'dir' => $sortDir, 'status' => $statusKey];
     if ($search !== '') {
         $query['q'] = $search;
     }
 
-    return '/sales-orders?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
-$buildClearSearchUrl = static function () use ($statusKey, $perPage, $sortDir): string {
+$buildClearSearchUrl = static function () use ($listUrl, $statusKey, $perPage, $sortDir): string {
     $query = ['page' => 1, 'per_page' => $perPage, 'dir' => $sortDir, 'status' => $statusKey];
 
-    return '/sales-orders?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
-$buildSortUrl = static function () use ($search, $statusKey, $perPage, $sortDir): string {
+$buildSortUrl = static function () use ($listUrl, $search, $statusKey, $perPage, $sortDir): string {
     $nextDir = $sortDir === 'asc' ? 'desc' : 'asc';
     $query = ['page' => 1, 'per_page' => $perPage, 'dir' => $nextDir, 'status' => $statusKey];
     if ($search !== '') {
         $query['q'] = $search;
     }
 
-    return '/sales-orders?' . http_build_query($query);
+    return $listUrl . '?' . http_build_query($query);
 };
 
 $sortIcon = static function (string $dir): string {

@@ -10,6 +10,8 @@ use App\Session\SessionInterface;
 
 final class AuthController
 {
+    use SendsRedirects;
+
     public function __construct(
         private readonly AuthService $authService,
         private readonly SessionInterface $session,
@@ -37,8 +39,7 @@ final class AuthController
         if ($user === null) {
             // Pesan aman - tidak membedakan "email tidak ada" vs "password salah" (AUTH-01).
             $this->session->set('login_failed', true);
-            header('Location: /login', true, 303);
-            exit;
+            $this->redirect('/login');
         }
 
         // Session ID diperbarui setelah login berhasil (AUTH-01).
@@ -49,14 +50,12 @@ final class AuthController
         // perubahan role langsung berlaku tanpa menunggu user logout.
         $this->session->set('user_id', $user->id);
 
-        header('Location: /dashboard', true, 303);
-        exit;
+        $this->redirect('/dashboard');
     }
 
     public function logout(): void
     {
         $this->session->destroy();
-        header('Location: /login', true, 303);
-        exit;
+        $this->redirect('/login');
     }
 }

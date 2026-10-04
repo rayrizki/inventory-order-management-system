@@ -384,13 +384,20 @@ classDiagram
         +bool isActive
     }
 
+    class ProductFilter {
+        +string? search
+        +int? categoryId
+        +bool? isActive
+        +string? stockStatus
+    }
+
     class ProductRepositoryInterface {
         <<interface>>
         +findById(int id) Product?
         +findBySku(string sku) Product?
         +save(Product product) Product
-        +listAll(string? search, int? categoryId, bool? isActive, string? stockStatus, int limit, int offset, string sortBy, string sortDir) Product[]
-        +countAll(string? search, int? categoryId, bool? isActive, string? stockStatus) int
+        +listAll(ProductFilter filter, int limit, int offset, string sortBy, string sortDir) Product[]
+        +countAll(ProductFilter filter) int
         +setActive(int id, bool isActive) void
         +sumInventoryValue() float
     }
@@ -407,8 +414,8 @@ classDiagram
         -const ALLOWED_IMAGE_MIME_TYPES
         -ProductRepositoryInterface products
         -CategoryRepositoryInterface categories
-        +listProducts(string? search, int? categoryId, bool? isActive, string? stockStatus, int page, int perPage, string sortBy, string sortDir) Product[]
-        +countProducts(string? search, int? categoryId, bool? isActive, string? stockStatus) int
+        +listProducts(ProductFilter filter, int page, int perPage, string sortBy, string sortDir) Product[]
+        +countProducts(ProductFilter filter) int
         +getProductById(int id) Product
         +getProductBySku(string sku) Product
         +createProduct(array input) Product
@@ -466,6 +473,7 @@ classDiagram
         +getTotalsForProducts(int[] productIds) array
     }
 
+    ProductRepositoryInterface ..> ProductFilter : menerima (value object)
     ProductRepositoryInterface <|.. MySqlProductRepository : implements
     ProductRepositoryInterface <|.. InMemoryProductRepository : implements
     ProductService --> ProductRepositoryInterface : constructor injection (interface)
@@ -945,3 +953,6 @@ Method baru di repository yang sudah ada (tidak digambar ulang sebagai kelas ter
 23. **`ProductStockRepositoryInterface` bertambah `totalQuantityByProducts()` dan `StockService` bertambah `getTotalsForProducts()`** - satu query GROUP BY untuk satu halaman daftar Produk, bukan `findByProduct()` per baris (N+1). Ditambahkan karena daftar Produk menampilkan reorder point tanpa angka stok pembandingnya, sehingga filter status stok FIND-01 bekerja benar tapi terlihat seperti tidak berpengaruh.
 24. **`ReportService::getOrdersReport()` bertambah parameter `onlyCreatedBy`, dan `ReportController` punya dua konstanta role** (`STOCK_REPORT_ROLES`, `ORDER_REPORT_ROLES`). Semula seluruh endpoint laporan Admin-only, padahal §1.2 memberi Sales "order miliknya" dan Warehouse Staff "laporan stok" - dua baris matriks yang belum terimplementasi. Penyaringan milik-sendiri diambil dari id session, bukan parameter request.
 25. **`NormalizesSearchTerm` (trait baru) tidak ada di initial.** Delapan Service menulis ulang method normalisasi kata kunci yang identik; diangkat ke satu trait tanpa state/dependency. `PurchaseOrderService`/`SalesOrderService` meng-alias method itu karena punya aturan tambahan membuang awalan `PO-`/`SO-`.
+26. **`SendsRedirects` (trait baru) tidak ada di initial.** Seluruh Controller menulis pasangan `header('Location: ...', true, 303)` lalu `exit` sebanyak 44 kali. Diangkat ke satu method `redirect()` bertipe `never` - bukan semata menghapus duplikasi, tapi karena `header()` tidak menghentikan eksekusi sehingga lupa menulis `exit` membuat body response ikut terkirim di belakang header redirect. Dengan tipe `never`, kelalaian itu tidak mungkin lagi dan PHPStan ikut memverifikasinya.
+27. **`ProductFilter` (value object baru) tidak ada di initial**, dan `ProductRepositoryInterface::listAll()`/`countAll()` berubah menerimanya. Alasannya bukan jumlah parameter: kedua method itu WAJIB dipanggil dengan kriteria penyaringan yang identik - kalau berbeda, jumlah halaman pagination tidak cocok dengan baris yang benar-benar tampil. Sebelumnya kecocokan itu hanya dijaga kebiasaan karena keempat nilainya dikirim terpisah; sekarang struktural. Normalisasi kata kunci ikut pindah ke konstruktornya, sehingga tidak ada pemanggil yang bisa lupa melakukannya.
+28. **`validate()` di PurchaseOrderService/SalesOrderService/ProductService dipecah** jadi `validateItems()` + `validateItemRow()` (dan `validateNumericFields()` di Produk). Initial menggambarkan `validate()` sebagai satu method; begitu PO/SO dibangun, method itu menggabungkan dua hal berbeda - validasi header (satu nilai per field) dan validasi N baris item. Pemisahannya mengikuti batas yang memang ada di domainnya, bukan sekadar memotong method panjang.

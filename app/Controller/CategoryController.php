@@ -12,6 +12,8 @@ use App\Session\AuthGuard;
 
 final class CategoryController
 {
+    use SendsRedirects;
+
     /** Pilihan baris per halaman yang boleh diminta lewat ?per_page= - selain ini diabaikan. */
     private const ALLOWED_PER_PAGE = [5, 10, 25, 50, 100];
 
@@ -19,6 +21,9 @@ final class CategoryController
     private const ALLOWED_SORT_COLUMNS = ['name', 'description'];
 
     private const LIST_URL = '/categories';
+
+    /** Form non-modal: fallback tanpa JavaScript dan tampilan saat validasi gagal. */
+    private const FORM_VIEW = __DIR__ . '/../../views/categories/form.php';
 
     /**
      * Pesan untuk tiap nilai ?status= yang bisa muncul di halaman daftar setelah redirect aksi.
@@ -71,8 +76,7 @@ final class CategoryController
                 $query['q'] = $search;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
         $categories = $this->categoryService->listCategories($search, $page, $perPage, $sortBy, $sortDir);
@@ -90,7 +94,7 @@ final class CategoryController
         $values = ['name' => '', 'description' => ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/categories/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function create(): void
@@ -103,14 +107,13 @@ final class CategoryController
 
         try {
             $this->categoryService->createCategory($name, $description);
-            header('Location: ' . self::LIST_URL . '?status=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?status=created');
         } catch (ValidationException $exception) {
             $category = null;
             $values = ['name' => $name, 'description' => $description];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/categories/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -123,7 +126,7 @@ final class CategoryController
         $values = ['name' => $category->name, 'description' => $category->description ?? ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/categories/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function update(string $id): void
@@ -136,14 +139,13 @@ final class CategoryController
 
         try {
             $this->categoryService->updateCategory((int) $id, $name, $description);
-            header('Location: ' . self::LIST_URL . '?status=updated', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?status=updated');
         } catch (ValidationException $exception) {
             $category = $this->categoryService->getCategoryById((int) $id);
             $values = ['name' => $name, 'description' => $description];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/categories/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -154,11 +156,9 @@ final class CategoryController
 
         try {
             $this->categoryService->deleteCategory((int) $id);
-            header('Location: ' . self::LIST_URL . '?status=deleted', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?status=deleted');
         } catch (ConflictException) {
-            header('Location: ' . self::LIST_URL . '?status=delete_blocked', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?status=delete_blocked');
         }
     }
 }

@@ -11,6 +11,8 @@ use App\Session\AuthGuard;
 
 final class UserController
 {
+    use SendsRedirects;
+
     /** Pilihan baris per halaman yang boleh diminta lewat ?per_page= - selain ini diabaikan. */
     private const ALLOWED_PER_PAGE = [5, 10, 25, 50, 100];
 
@@ -25,6 +27,9 @@ final class UserController
     ];
 
     private const LIST_URL = '/users';
+
+    /** Form non-modal: fallback tanpa JavaScript dan tampilan saat validasi gagal. */
+    private const FORM_VIEW = __DIR__ . '/../../views/users/form.php';
 
     private const STATUS_MESSAGES = [
         'created' => ['type' => 'success', 'text' => 'User berhasil ditambahkan.'],
@@ -76,8 +81,7 @@ final class UserController
                 $query['q'] = $search;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
         $users = $this->userService->listUsers($search, $isActive, $page, $perPage, $sortBy, $sortDir);
@@ -95,7 +99,7 @@ final class UserController
         $values = ['name' => '', 'email' => '', 'password' => '', 'role' => ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/users/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function create(): void
@@ -107,13 +111,12 @@ final class UserController
 
         try {
             $this->userService->createUser($values);
-            header('Location: ' . self::LIST_URL . '?result=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=created');
         } catch (ValidationException $exception) {
             $user = null;
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/users/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -126,7 +129,7 @@ final class UserController
         $values = ['name' => $user->name, 'email' => $user->email, 'password' => '', 'role' => $user->role->value];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/users/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function update(string $id): void
@@ -138,13 +141,12 @@ final class UserController
 
         try {
             $this->userService->updateUser((int) $id, $values);
-            header('Location: ' . self::LIST_URL . '?result=updated', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=updated');
         } catch (ValidationException $exception) {
             $user = $this->userService->getUserById((int) $id);
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/users/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -157,8 +159,7 @@ final class UserController
         $this->userService->setActive((int) $id, !$user->isActive);
 
         $result = $user->isActive ? 'deactivated' : 'activated';
-        header('Location: ' . self::LIST_URL . '?result=' . $result, true, 303);
-        exit;
+        $this->redirect(self::LIST_URL . '?result=' . $result);
     }
 
     /**

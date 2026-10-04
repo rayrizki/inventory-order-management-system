@@ -169,49 +169,8 @@ final class PurchaseOrderService
             $errors['order_date'] = 'Tanggal order wajib diisi dengan format yang valid.';
         }
 
-        $items = [];
-        if ($itemsInput === []) {
-            $errors['items'] = 'PO harus memiliki minimal satu item.';
-        } else {
-            foreach ($itemsInput as $index => $itemInput) {
-                $productIdRaw = trim((string) ($itemInput['product_id'] ?? ''));
-                $qtyRaw = trim((string) ($itemInput['qty'] ?? ''));
-                $buyPriceRaw = trim((string) ($itemInput['buy_price'] ?? ''));
-
-                // Baris kosong sepenuhnya dilewati, bukan error - form boleh
-                // menyisakan baris kosong ekstra tanpa memaksa user menghapusnya.
-                if ($productIdRaw === '' && $qtyRaw === '' && $buyPriceRaw === '') {
-                    continue;
-                }
-
-                $productId = ctype_digit($productIdRaw) ? (int) $productIdRaw : null;
-                $product = $productId !== null ? $this->products->findById($productId) : null;
-                $rowValid = true;
-
-                if ($product === null || !$product->isActive) {
-                    $errors["items.$index.product_id"] = 'Produk wajib dipilih dan aktif.';
-                    $rowValid = false;
-                }
-
-                if (!ctype_digit($qtyRaw) || (int) $qtyRaw <= 0) {
-                    $errors["items.$index.qty"] = 'Qty harus bilangan bulat positif.';
-                    $rowValid = false;
-                }
-
-                if (!is_numeric($buyPriceRaw) || (float) $buyPriceRaw < 0) {
-                    $errors["items.$index.buy_price"] = 'Harga beli harus angka dan tidak boleh negatif.';
-                    $rowValid = false;
-                }
-
-                if ($rowValid) {
-                    $items[] = new PurchaseOrderItem(null, null, $productId, (int) $qtyRaw, (float) $buyPriceRaw, 0);
-                }
-            }
-
-            if ($items === [] && !isset($errors['items'])) {
-                $errors['items'] = 'PO harus memiliki minimal satu item yang valid.';
-            }
-        }
+        [$items, $itemErrors] = $this->validateItems($itemsInput);
+        $errors += $itemErrors;
 
         if ($errors !== []) {
             throw new ValidationException($errors);
@@ -223,6 +182,87 @@ final class PurchaseOrderService
             'order_date' => $orderDate,
             'items' => $items,
         ];
+    }
+
+    /**
+     * Validasi baris item dipisah dari validasi header (supplier, gudang,
+     * tanggal) karena keduanya memang dua hal berbeda: header punya satu
+     * nilai per field, item punya N baris yang masing-masing divalidasi
+     * sendiri. Dipisah juga menurunkan kerumitan `validate()` yang tadinya
+     * menggabungkan keduanya dalam satu method (SonarQube php:S3776).
+     *
+     * Mengembalikan item yang valid DAN kumpulan error-nya sekaligus, bukan
+     * melempar di baris pertama yang salah - VAL-01 meminta seluruh kesalahan
+     * ditampilkan sekaligus supaya user tidak memperbaiki satu per satu.
+     *
+     * @param array<int, mixed> $itemsInput
+     * @return array{0: PurchaseOrderItem[], 1: array<string, string>}
+     */
+    private function validateItems(array $itemsInput): array
+    {
+        if ($itemsInput === []) {
+            return [[], ['items' => 'PO harus memiliki minimal satu item.']];
+        }
+
+        $items = [];
+        $errors = [];
+
+        foreach ($itemsInput as $index => $itemInput) {
+            [$item, $rowErrors] = $this->validateItemRow((int) $index, $itemInput);
+            $errors += $rowErrors;
+
+            if ($item !== null) {
+                $items[] = $item;
+            }
+        }
+
+        if ($items === []) {
+            $errors['items'] = 'PO harus memiliki minimal satu item yang valid.';
+        }
+
+        return [$items, $errors];
+    }
+
+    /**
+     * Satu baris item: mengembalikan item kalau seluruh fieldnya valid, atau
+     * kumpulan error per field kalau tidak. Baris yang SELURUHNYA kosong
+     * mengembalikan [null, []] - dianggap tidak diisi, bukan salah isi.
+     *
+     * @return array{0: PurchaseOrderItem|null, 1: array<string, string>}
+     */
+    private function validateItemRow(int $index, mixed $itemInput): array
+    {
+        $productIdRaw = trim((string) ($itemInput['product_id'] ?? ''));
+        $qtyRaw = trim((string) ($itemInput['qty'] ?? ''));
+        $buyPriceRaw = trim((string) ($itemInput['buy_price'] ?? ''));
+
+        // Baris kosong sepenuhnya dilewati, bukan error - form boleh
+        // menyisakan baris kosong ekstra tanpa memaksa user menghapusnya.
+        if ($productIdRaw === '' && $qtyRaw === '' && $buyPriceRaw === '') {
+            return [null, []];
+        }
+
+        $productId = ctype_digit($productIdRaw) ? (int) $productIdRaw : null;
+        $product = $productId !== null ? $this->products->findById($productId) : null;
+        $errors = [];
+
+        if ($product === null || !$product->isActive) {
+            $errors["items.$index.product_id"] = 'Produk wajib dipilih dan aktif.';
+        }
+
+        if (!ctype_digit($qtyRaw) || (int) $qtyRaw <= 0) {
+            $errors["items.$index.qty"] = 'Qty harus bilangan bulat positif.';
+        }
+
+        if (!is_numeric($buyPriceRaw) || (float) $buyPriceRaw < 0) {
+            $errors["items.$index.buy_price"] = 'Harga beli harus angka dan tidak boleh negatif.';
+        }
+
+        if ($errors !== []) {
+            return [null, $errors];
+        }
+
+        return [new PurchaseOrderItem(null, null, $productId, (int) $qtyRaw, (float) $buyPriceRaw, 0), []];
     }
 
     private function isValidDate(string $date): bool

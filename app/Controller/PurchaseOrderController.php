@@ -8,6 +8,7 @@ use App\Entity\PurchaseOrderStatus;
 use App\Entity\Role;
 use App\Exception\ConflictException;
 use App\Exception\ValidationException;
+use App\Repository\ProductFilter;
 use App\Service\GoodsReceiptService;
 use App\Service\ProductService;
 use App\Service\PurchaseOrderService;
@@ -17,6 +18,8 @@ use App\Session\AuthGuard;
 
 final class PurchaseOrderController
 {
+    use SendsRedirects;
+
     /** Dropdown dianggap "semua" - jauh di atas jumlah data realistis. */
     private const SUPPLIER_DROPDOWN_LIMIT = 1000;
     private const WAREHOUSE_DROPDOWN_LIMIT = 1000;
@@ -51,6 +54,13 @@ final class PurchaseOrderController
     ];
 
     private const LIST_URL = '/purchase-orders';
+
+    /**
+     * Hasil redirect ketika transisi status ditolak - sama perannya dengan
+     * konstanta senama di SalesOrderController; kuncinya harus cocok dengan
+     * salah satu entri STATUS_MESSAGES di atas.
+     */
+    private const RESULT_CANNOT_TRANSITION = '?result=cannot_transition';
 
     private const STATUS_MESSAGES = [
         'created' => ['type' => 'success', 'text' => 'Purchase Order berhasil dibuat sebagai Draft.'],
@@ -101,8 +111,7 @@ final class PurchaseOrderController
                 $query['q'] = $search;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
         $purchaseOrders = $this->purchaseOrderService->listPurchaseOrders($search, $status, $page, $perPage, $sortDir);
@@ -129,7 +138,7 @@ final class PurchaseOrderController
         $errors = [];
         $suppliers = $this->supplierService->listSuppliers(isActive: true, perPage: self::SUPPLIER_DROPDOWN_LIMIT);
         $warehouses = $this->warehouseService->listWarehouses(isActive: true, perPage: self::WAREHOUSE_DROPDOWN_LIMIT);
-        $products = $this->productService->listProducts(isActive: true, perPage: self::PRODUCT_DROPDOWN_LIMIT);
+        $products = $this->productService->listProducts(new ProductFilter(isActive: true), perPage: self::PRODUCT_DROPDOWN_LIMIT);
 
         require_once __DIR__ . '/../../views/purchase-orders/form.php';
     }
@@ -143,13 +152,12 @@ final class PurchaseOrderController
 
         try {
             $purchaseOrder = $this->purchaseOrderService->createPurchaseOrder($values, $currentUser->id);
-            header('Location: ' . self::LIST_URL . '/' . $purchaseOrder->id . '?result=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '/' . $purchaseOrder->id . '?result=created');
         } catch (ValidationException $exception) {
             $errors = $exception->errors();
             $suppliers = $this->supplierService->listSuppliers(isActive: true, perPage: self::SUPPLIER_DROPDOWN_LIMIT);
             $warehouses = $this->warehouseService->listWarehouses(isActive: true, perPage: self::WAREHOUSE_DROPDOWN_LIMIT);
-            $products = $this->productService->listProducts(isActive: true, perPage: self::PRODUCT_DROPDOWN_LIMIT);
+            $products = $this->productService->listProducts(new ProductFilter(isActive: true), perPage: self::PRODUCT_DROPDOWN_LIMIT);
 
             require_once __DIR__ . '/../../views/purchase-orders/form.php';
         }
@@ -161,11 +169,10 @@ final class PurchaseOrderController
 
         try {
             $this->purchaseOrderService->markOrdered((int) $id);
-            header('Location: ' . self::LIST_URL . '/' . $id . '?result=ordered', true, 303);
+            $this->redirect(self::LIST_URL . '/' . $id . '?result=ordered');
         } catch (ConflictException) {
-            header('Location: ' . self::LIST_URL . '/' . $id . '?result=cannot_transition', true, 303);
+            $this->redirect(self::LIST_URL . '/' . $id . self::RESULT_CANNOT_TRANSITION);
         }
-        exit;
     }
 
     public function cancel(string $id): void
@@ -174,11 +181,10 @@ final class PurchaseOrderController
 
         try {
             $this->purchaseOrderService->cancel((int) $id);
-            header('Location: ' . self::LIST_URL . '/' . $id . '?result=cancelled', true, 303);
+            $this->redirect(self::LIST_URL . '/' . $id . '?result=cancelled');
         } catch (ConflictException) {
-            header('Location: ' . self::LIST_URL . '/' . $id . '?result=cannot_transition', true, 303);
+            $this->redirect(self::LIST_URL . '/' . $id . self::RESULT_CANNOT_TRANSITION);
         }
-        exit;
     }
 
     public function receiveGoods(string $id): void
@@ -198,8 +204,7 @@ final class PurchaseOrderController
         try {
             $purchaseOrder = $this->goodsReceiptService->receive((int) $id, $receivedQtyByItemId, $currentUser->id);
             $result = $purchaseOrder->status === PurchaseOrderStatus::Received ? 'received' : 'partially_received';
-            header('Location: ' . self::LIST_URL . '/' . $id . '?result=' . $result, true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '/' . $id . '?result=' . $result);
         } catch (ValidationException $exception) {
             $this->renderShow($currentUser, (int) $id, $exception->errors());
         } catch (ConflictException $exception) {

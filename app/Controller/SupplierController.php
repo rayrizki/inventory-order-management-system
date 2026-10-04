@@ -11,6 +11,8 @@ use App\Session\AuthGuard;
 
 final class SupplierController
 {
+    use SendsRedirects;
+
     /** Pilihan baris per halaman yang boleh diminta lewat ?per_page= - selain ini diabaikan. */
     private const ALLOWED_PER_PAGE = [5, 10, 25, 50, 100];
 
@@ -25,6 +27,9 @@ final class SupplierController
     ];
 
     private const LIST_URL = '/suppliers';
+
+    /** Form non-modal: fallback tanpa JavaScript dan tampilan saat validasi gagal. */
+    private const FORM_VIEW = __DIR__ . '/../../views/suppliers/form.php';
 
     private const STATUS_MESSAGES = [
         'created' => ['type' => 'success', 'text' => 'Supplier berhasil ditambahkan.'],
@@ -73,8 +78,7 @@ final class SupplierController
                 $query['q'] = $search;
             }
 
-            header('Location: ' . self::LIST_URL . '?' . http_build_query($query), true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?' . http_build_query($query));
         }
 
         $suppliers = $this->supplierService->listSuppliers($search, $isActive, $page, $perPage, $sortBy, $sortDir);
@@ -92,7 +96,7 @@ final class SupplierController
         $values = ['name' => '', 'contact' => '', 'address' => ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/suppliers/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function create(): void
@@ -106,14 +110,13 @@ final class SupplierController
 
         try {
             $this->supplierService->createSupplier($name, $contact, $address);
-            header('Location: ' . self::LIST_URL . '?result=created', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=created');
         } catch (ValidationException $exception) {
             $supplier = null;
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/suppliers/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -126,7 +129,7 @@ final class SupplierController
         $values = ['name' => $supplier->name, 'contact' => $supplier->contact ?? '', 'address' => $supplier->address ?? ''];
         $errors = [];
 
-        require_once __DIR__ . '/../../views/suppliers/form.php';
+        require_once self::FORM_VIEW;
     }
 
     public function update(string $id): void
@@ -140,14 +143,13 @@ final class SupplierController
 
         try {
             $this->supplierService->updateSupplier((int) $id, $name, $contact, $address);
-            header('Location: ' . self::LIST_URL . '?result=updated', true, 303);
-            exit;
+            $this->redirect(self::LIST_URL . '?result=updated');
         } catch (ValidationException $exception) {
             $supplier = $this->supplierService->getSupplierById((int) $id);
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require_once __DIR__ . '/../../views/suppliers/form.php';
+            require_once self::FORM_VIEW;
         }
     }
 
@@ -160,7 +162,6 @@ final class SupplierController
         $this->supplierService->setActive((int) $id, !$supplier->isActive);
 
         $result = $supplier->isActive ? 'deactivated' : 'activated';
-        header('Location: ' . self::LIST_URL . '?result=' . $result, true, 303);
-        exit;
+        $this->redirect(self::LIST_URL . '?result=' . $result);
     }
 }
