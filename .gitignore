@@ -26,3 +26,7 @@ Thumbs.db
 
 # SonarQube: token dikirim lewat environment variable, tidak pernah di-commit
 .scannerwork/
+
+# Artefak render sementara untuk QA deck presentasi
+/docs/presentation/slide-*.jpg
+/docs/presentation/*.pdf
