@@ -12,7 +12,7 @@
  */
 $pageTitle = $salesOrder->number();
 $activeNav = 'sales-orders';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $issueError ??= null;
 $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value, 0, ',', '.');
@@ -180,4 +180,4 @@ foreach ($salesOrder->items as $item) {
                     </div>
                 <?php endif; ?>
             </div>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

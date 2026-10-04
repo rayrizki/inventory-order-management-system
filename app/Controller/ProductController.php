@@ -116,7 +116,7 @@ final class ProductController
         );
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/products/index.php';
+        require_once __DIR__ . '/../../views/products/index.php';
     }
 
     public function show(string $id): void
@@ -127,7 +127,7 @@ final class ProductController
         $categoryName = $this->categoryService->getCategoryById($product->categoryId)->name;
         $stock = $this->stockService->getStockSummary($product->id);
 
-        require __DIR__ . '/../../views/products/show.php';
+        require_once __DIR__ . '/../../views/products/show.php';
     }
 
     public function showCreateForm(): void
@@ -140,7 +140,7 @@ final class ProductController
         $errors = [];
         $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-        require __DIR__ . '/../../views/products/form.php';
+        require_once __DIR__ . '/../../views/products/form.php';
     }
 
     public function create(): void
@@ -159,7 +159,7 @@ final class ProductController
             $errors = $exception->errors();
             $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-            require __DIR__ . '/../../views/products/form.php';
+            require_once __DIR__ . '/../../views/products/form.php';
         }
     }
 
@@ -181,7 +181,7 @@ final class ProductController
         $errors = [];
         $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-        require __DIR__ . '/../../views/products/form.php';
+        require_once __DIR__ . '/../../views/products/form.php';
     }
 
     public function update(string $id): void
@@ -200,7 +200,7 @@ final class ProductController
             $errors = $exception->errors();
             $categories = $this->categoryService->listCategories(perPage: self::CATEGORY_DROPDOWN_LIMIT);
 
-            require __DIR__ . '/../../views/products/form.php';
+            require_once __DIR__ . '/../../views/products/form.php';
         }
     }
 

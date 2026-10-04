@@ -11,7 +11,7 @@
  */
 $pageTitle = $purchaseOrder->number();
 $activeNav = 'purchase-orders';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $receiptErrors ??= [];
 $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value, 0, ',', '.');
@@ -188,4 +188,4 @@ $canReceive = in_array($purchaseOrder->status, [\App\Entity\PurchaseOrderStatus:
                     </div>
                 <?php endif; ?>
             </div>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

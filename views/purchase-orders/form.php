@@ -9,7 +9,7 @@
  */
 $pageTitle = 'Buat Purchase Order';
 $activeNav = 'purchase-orders';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 // Minimal 1 baris ditampilkan meski belum ada item terisi - baris pertama
 // jadi "template kosong" yang bisa langsung diisi user.
@@ -163,4 +163,4 @@ $rows = $values['items'] !== [] ? $values['items'] : [['product_id' => '', 'qty'
                     </div>
                 </div>
             </template>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

@@ -5,7 +5,7 @@
  */
 $pageTitle = 'Dashboard';
 $activeNav = 'dashboard';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value, 0, ',', '.');
 
@@ -162,4 +162,4 @@ $renderStatusTable = static function (array $counts, array $statusRows, string $
                     <?php $renderLowStockTable($summary['lowStockProducts']); ?>
                 </div>
             <?php endif; ?>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

@@ -80,7 +80,7 @@ final class SupplierController
         $suppliers = $this->supplierService->listSuppliers($search, $isActive, $page, $perPage, $sortBy, $sortDir);
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/suppliers/index.php';
+        require_once __DIR__ . '/../../views/suppliers/index.php';
     }
 
     public function showCreateForm(): void
@@ -92,7 +92,7 @@ final class SupplierController
         $values = ['name' => '', 'contact' => '', 'address' => ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/suppliers/form.php';
+        require_once __DIR__ . '/../../views/suppliers/form.php';
     }
 
     public function create(): void
@@ -113,7 +113,7 @@ final class SupplierController
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/suppliers/form.php';
+            require_once __DIR__ . '/../../views/suppliers/form.php';
         }
     }
 
@@ -126,7 +126,7 @@ final class SupplierController
         $values = ['name' => $supplier->name, 'contact' => $supplier->contact ?? '', 'address' => $supplier->address ?? ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/suppliers/form.php';
+        require_once __DIR__ . '/../../views/suppliers/form.php';
     }
 
     public function update(string $id): void
@@ -147,7 +147,7 @@ final class SupplierController
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/suppliers/form.php';
+            require_once __DIR__ . '/../../views/suppliers/form.php';
         }
     }
 

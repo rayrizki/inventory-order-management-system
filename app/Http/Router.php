@@ -61,7 +61,7 @@ final class Router
      */
     private function match(string $pattern, string $path): ?array
     {
-        $regex = preg_replace('#\{[a-zA-Z_][a-zA-Z0-9_]*\}#', '([^/]+)', $pattern);
+        $regex = preg_replace('#\{[a-zA-Z_]\w*\}#', '([^/]+)', $pattern);
         $regex = '#^' . $regex . '$#';
 
         if (preg_match($regex, $path, $matches) !== 1) {

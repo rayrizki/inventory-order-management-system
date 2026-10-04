@@ -80,7 +80,7 @@ final class WarehouseController
         $warehouses = $this->warehouseService->listWarehouses($search, $isActive, $page, $perPage, $sortBy, $sortDir);
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/warehouses/index.php';
+        require_once __DIR__ . '/../../views/warehouses/index.php';
     }
 
     public function showCreateForm(): void
@@ -92,7 +92,7 @@ final class WarehouseController
         $values = ['name' => '', 'location' => ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/warehouses/form.php';
+        require_once __DIR__ . '/../../views/warehouses/form.php';
     }
 
     public function create(): void
@@ -112,7 +112,7 @@ final class WarehouseController
             $values = ['name' => $name, 'location' => $location];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/warehouses/form.php';
+            require_once __DIR__ . '/../../views/warehouses/form.php';
         }
     }
 
@@ -125,7 +125,7 @@ final class WarehouseController
         $values = ['name' => $warehouse->name, 'location' => $warehouse->location ?? ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/warehouses/form.php';
+        require_once __DIR__ . '/../../views/warehouses/form.php';
     }
 
     public function update(string $id): void
@@ -145,7 +145,7 @@ final class WarehouseController
             $values = ['name' => $name, 'location' => $location];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/warehouses/form.php';
+            require_once __DIR__ . '/../../views/warehouses/form.php';
         }
     }
 

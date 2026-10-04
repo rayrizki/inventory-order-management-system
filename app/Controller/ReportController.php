@@ -43,7 +43,7 @@ final class ReportController
 
         [$from, $to] = $this->resolveDateRange();
 
-        require __DIR__ . '/../../views/reports/index.php';
+        require_once __DIR__ . '/../../views/reports/index.php';
     }
 
     public function exportStockLedgerCsv(): void

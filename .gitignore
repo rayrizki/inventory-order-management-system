@@ -23,3 +23,6 @@ Thumbs.db
 
 # Disposable static preview copies (visual QA only, not part of the app)
 /public/_preview-*.php
+
+# SonarQube: token dikirim lewat environment variable, tidak pernah di-commit
+.scannerwork/

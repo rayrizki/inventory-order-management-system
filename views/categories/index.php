@@ -13,7 +13,7 @@
  */
 $pageTitle = 'Kategori';
 $activeNav = 'categories';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $buildPageUrl = static function (int $targetPage) use ($search, $perPage, $sortBy, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir];
@@ -292,4 +292,4 @@ $sortIcon = static function (string $dir): string {
                     </form>
                 </div>
             </dialog>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

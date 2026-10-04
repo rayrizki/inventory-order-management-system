@@ -2,8 +2,8 @@
 
 declare(strict_types=1);
 
-require __DIR__ . '/../vendor/autoload.php';
-require __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../vendor/autoload.php';
+require_once __DIR__ . '/../config/database.php';
 
 use App\Controller\AuthController;
 use App\Controller\CategoryController;

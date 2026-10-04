@@ -11,4 +11,4 @@ $entityKey = 'supplier';
 $listUrl = '/suppliers';
 $navKey = 'suppliers';
 
-require __DIR__ . '/../shared/supplier-customer-form.php';
+require_once __DIR__ . '/../shared/supplier-customer-form.php';

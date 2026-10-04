@@ -20,7 +20,7 @@
 $isAdmin = $currentUser->role === \App\Entity\Role::Admin;
 $pageTitle = 'Produk';
 $activeNav = 'products';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $buildPageUrl = static function (int $targetPage) use ($search, $categoryId, $status, $stockStatus, $perPage, $sortBy, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status, 'stock_status' => $stockStatus];
@@ -357,4 +357,4 @@ $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

@@ -7,7 +7,7 @@
  */
 $pageTitle = $product->name;
 $activeNav = 'products';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $formatRupiah = static fn (float $value): string => 'Rp ' . number_format($value, 0, ',', '.');
 $isLowStock = $stock['total'] < $product->reorderPoint;
@@ -106,4 +106,4 @@ $isLowStock = $stock['total'] < $product->reorderPoint;
                     </div>
                 <?php endif; ?>
             </div>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

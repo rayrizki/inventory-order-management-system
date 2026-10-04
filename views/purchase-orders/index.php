@@ -14,7 +14,7 @@
  */
 $pageTitle = 'Purchase Order';
 $activeNav = 'purchase-orders';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $buildPageUrl = static function (int $targetPage) use ($search, $statusKey, $perPage, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'dir' => $sortDir, 'status' => $statusKey];
@@ -241,4 +241,4 @@ $statusBadge = static function (\App\Entity\PurchaseOrderStatus $status): string
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

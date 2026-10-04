@@ -83,7 +83,7 @@ final class UserController
         $users = $this->userService->listUsers($search, $isActive, $page, $perPage, $sortBy, $sortDir);
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/users/index.php';
+        require_once __DIR__ . '/../../views/users/index.php';
     }
 
     public function showCreateForm(): void
@@ -95,7 +95,7 @@ final class UserController
         $values = ['name' => '', 'email' => '', 'password' => '', 'role' => ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/users/form.php';
+        require_once __DIR__ . '/../../views/users/form.php';
     }
 
     public function create(): void
@@ -113,7 +113,7 @@ final class UserController
             $user = null;
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/users/form.php';
+            require_once __DIR__ . '/../../views/users/form.php';
         }
     }
 
@@ -126,7 +126,7 @@ final class UserController
         $values = ['name' => $user->name, 'email' => $user->email, 'password' => '', 'role' => $user->role->value];
         $errors = [];
 
-        require __DIR__ . '/../../views/users/form.php';
+        require_once __DIR__ . '/../../views/users/form.php';
     }
 
     public function update(string $id): void
@@ -144,7 +144,7 @@ final class UserController
             $user = $this->userService->getUserById((int) $id);
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/users/form.php';
+            require_once __DIR__ . '/../../views/users/form.php';
         }
     }
 

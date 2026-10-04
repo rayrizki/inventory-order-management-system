@@ -9,7 +9,7 @@
 $isEdit = $product !== null;
 $pageTitle = $isEdit ? 'Ubah Produk' : 'Tambah Produk';
 $activeNav = 'products';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 ?>
             <div class="page-header">
                 <div>
@@ -193,4 +193,4 @@ require __DIR__ . '/../layout/shell-start.php';
                     <a href="/products" class="btn btn-secondary">Batal</a>
                 </div>
             </form>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

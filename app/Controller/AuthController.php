@@ -22,7 +22,7 @@ final class AuthController
         $this->session->remove('login_failed');
         $csrfToken = (new CsrfToken($this->session))->get();
 
-        require __DIR__ . '/../../views/auth/login.php';
+        require_once __DIR__ . '/../../views/auth/login.php';
     }
 
     public function login(): void

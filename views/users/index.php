@@ -14,7 +14,7 @@
  */
 $pageTitle = 'User';
 $activeNav = 'users';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $roleLabels = ['Admin' => 'Admin', 'Sales' => 'Sales', 'WarehouseStaff' => 'Warehouse Staff'];
 
@@ -347,4 +347,4 @@ $sortIcon = static function (string $dir): string {
                     </form>
                 </div>
             </dialog>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

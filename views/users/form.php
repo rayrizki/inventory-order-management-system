@@ -8,7 +8,7 @@
 $isEdit = $user !== null;
 $pageTitle = $isEdit ? 'Ubah User' : 'Tambah User';
 $activeNav = 'users';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 ?>
             <div class="page-header">
                 <div>
@@ -95,4 +95,4 @@ require __DIR__ . '/../layout/shell-start.php';
                     </div>
                 </form>
             </div>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

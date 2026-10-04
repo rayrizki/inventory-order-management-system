@@ -14,7 +14,7 @@
  */
 $pageTitle = 'Gudang';
 $activeNav = 'warehouses';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $buildPageUrl = static function (int $targetPage) use ($search, $status, $perPage, $sortBy, $sortDir): string {
     $query = ['page' => $targetPage, 'per_page' => $perPage, 'sort' => $sortBy, 'dir' => $sortDir, 'status' => $status];
@@ -323,4 +323,4 @@ $sortIcon = static function (string $dir): string {
                     </form>
                 </div>
             </dialog>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

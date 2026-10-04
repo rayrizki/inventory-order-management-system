@@ -80,7 +80,7 @@ final class CustomerController
         $customers = $this->customerService->listCustomers($search, $isActive, $page, $perPage, $sortBy, $sortDir);
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/customers/index.php';
+        require_once __DIR__ . '/../../views/customers/index.php';
     }
 
     public function showCreateForm(): void
@@ -92,7 +92,7 @@ final class CustomerController
         $values = ['name' => '', 'contact' => '', 'address' => ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/customers/form.php';
+        require_once __DIR__ . '/../../views/customers/form.php';
     }
 
     public function create(): void
@@ -113,7 +113,7 @@ final class CustomerController
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/customers/form.php';
+            require_once __DIR__ . '/../../views/customers/form.php';
         }
     }
 
@@ -126,7 +126,7 @@ final class CustomerController
         $values = ['name' => $customer->name, 'contact' => $customer->contact ?? '', 'address' => $customer->address ?? ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/customers/form.php';
+        require_once __DIR__ . '/../../views/customers/form.php';
     }
 
     public function update(string $id): void
@@ -147,7 +147,7 @@ final class CustomerController
             $values = ['name' => $name, 'contact' => $contact, 'address' => $address];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/customers/form.php';
+            require_once __DIR__ . '/../../views/customers/form.php';
         }
     }
 

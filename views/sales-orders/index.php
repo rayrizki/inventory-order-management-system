@@ -15,7 +15,7 @@
  */
 $pageTitle = 'Sales Order';
 $activeNav = 'sales-orders';
-require __DIR__ . '/../layout/shell-start.php';
+require_once __DIR__ . '/../layout/shell-start.php';
 
 $canCreate = $currentUser->role === \App\Entity\Role::Admin || $currentUser->role === \App\Entity\Role::Sales;
 
@@ -243,4 +243,4 @@ $statusBadge = static function (\App\Entity\SalesOrderStatus $status): string {
                     <?php endif; ?>
                 </div>
             <?php endif; ?>
-<?php require __DIR__ . '/../layout/shell-end.php'; ?>
+<?php require_once __DIR__ . '/../layout/shell-end.php'; ?>

@@ -109,7 +109,7 @@ final class PurchaseOrderController
         $supplierNames = $this->supplierNameMap();
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/purchase-orders/index.php';
+        require_once __DIR__ . '/../../views/purchase-orders/index.php';
     }
 
     public function show(string $id): void
@@ -131,7 +131,7 @@ final class PurchaseOrderController
         $warehouses = $this->warehouseService->listWarehouses(isActive: true, perPage: self::WAREHOUSE_DROPDOWN_LIMIT);
         $products = $this->productService->listProducts(isActive: true, perPage: self::PRODUCT_DROPDOWN_LIMIT);
 
-        require __DIR__ . '/../../views/purchase-orders/form.php';
+        require_once __DIR__ . '/../../views/purchase-orders/form.php';
     }
 
     public function create(): void
@@ -151,7 +151,7 @@ final class PurchaseOrderController
             $warehouses = $this->warehouseService->listWarehouses(isActive: true, perPage: self::WAREHOUSE_DROPDOWN_LIMIT);
             $products = $this->productService->listProducts(isActive: true, perPage: self::PRODUCT_DROPDOWN_LIMIT);
 
-            require __DIR__ . '/../../views/purchase-orders/form.php';
+            require_once __DIR__ . '/../../views/purchase-orders/form.php';
         }
     }
 
@@ -224,7 +224,7 @@ final class PurchaseOrderController
         $receiptHistory = $this->goodsReceiptService->getReceiptHistory($id);
         $statusMessage = self::STATUS_MESSAGES[$_GET['result'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/purchase-orders/show.php';
+        require_once __DIR__ . '/../../views/purchase-orders/show.php';
     }
 
     /**

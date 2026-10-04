@@ -15,4 +15,4 @@ $listUrl = '/suppliers';
 $navKey = 'suppliers';
 $emptyStateContext = 'purchase order';
 
-require __DIR__ . '/../shared/supplier-customer-list.php';
+require_once __DIR__ . '/../shared/supplier-customer-list.php';

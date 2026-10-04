@@ -31,6 +31,6 @@ final class DashboardController
             Role::WarehouseStaff => $this->dashboardService->getWarehouseSummary(),
         };
 
-        require __DIR__ . '/../../views/dashboard/index.php';
+        require_once __DIR__ . '/../../views/dashboard/index.php';
     }
 }

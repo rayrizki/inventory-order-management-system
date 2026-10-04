@@ -78,7 +78,7 @@ final class CategoryController
         $categories = $this->categoryService->listCategories($search, $page, $perPage, $sortBy, $sortDir);
         $statusMessage = self::STATUS_MESSAGES[$_GET['status'] ?? ''] ?? null;
 
-        require __DIR__ . '/../../views/categories/index.php';
+        require_once __DIR__ . '/../../views/categories/index.php';
     }
 
     public function showCreateForm(): void
@@ -90,7 +90,7 @@ final class CategoryController
         $values = ['name' => '', 'description' => ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/categories/form.php';
+        require_once __DIR__ . '/../../views/categories/form.php';
     }
 
     public function create(): void
@@ -110,7 +110,7 @@ final class CategoryController
             $values = ['name' => $name, 'description' => $description];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/categories/form.php';
+            require_once __DIR__ . '/../../views/categories/form.php';
         }
     }
 
@@ -123,7 +123,7 @@ final class CategoryController
         $values = ['name' => $category->name, 'description' => $category->description ?? ''];
         $errors = [];
 
-        require __DIR__ . '/../../views/categories/form.php';
+        require_once __DIR__ . '/../../views/categories/form.php';
     }
 
     public function update(string $id): void
@@ -143,7 +143,7 @@ final class CategoryController
             $values = ['name' => $name, 'description' => $description];
             $errors = $exception->errors();
 
-            require __DIR__ . '/../../views/categories/form.php';
+            require_once __DIR__ . '/../../views/categories/form.php';
         }
     }
 
